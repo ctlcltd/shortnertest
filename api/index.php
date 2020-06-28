@@ -10,25 +10,25 @@ use \urls\API;
 
 const ROUTES = [
 	'/' => [
-		'GET' => [ 'call' => 'resolver', 'auth' => false ]
+		'POST' => [ 'auth' => true ]
 	],
 	'/store' => [
-		'GET' => [ 'call' => 'store_list', 'auth' => false ],
-		'POST' => [ 'call' => 'store_add', 'auth' => false ],
-		'PATCH' => [ 'call' => 'store_update', 'auth' => false ],
-		'DELETE' => [ 'call' => 'store_delete', 'auth' => false ]
+		'GET' => [ 'call' => 'store_list' ],
+		'POST' => [ 'call' => 'store_add' ],
+		'PATCH' => [ 'call' => 'store_update' ],
+		'DELETE' => [ 'call' => 'store_delete' ]
 	],
 	'/domains' => [
-		'GET' => [ 'call' => 'domain_list', 'auth' => false ],
-		'POST' => [ 'call' => 'domain_add', 'auth' => false ],
-		'PATCH' => [ 'call' => 'domain_update', 'auth' => false ],
-		'DELETE' => [ 'call' => 'domain_delete', 'auth' => false ]
+		'GET' => [ 'call' => 'domain_list' ],
+		'POST' => [ 'call' => 'domain_add' ],
+		'PATCH' => [ 'call' => 'domain_update' ],
+		'DELETE' => [ 'call' => 'domain_delete' ]
 	],
 	'/users' => [
-		'GET' => [ 'call' => 'user_get_by_id', 'auth' => false ],
-		'POST' => [ 'call' => 'user_add', 'auth' => false ],
-		'PATCH' => [ 'call' => 'user_update', 'auth' => false ],
-		'DELETE' => [ 'call' => 'user_delete', 'auth' => false ]
+		'GET' => [ 'call' => 'user_get_by_id' ],
+		'POST' => [ 'call' => 'user_add' ],
+		'PATCH' => [ 'call' => 'user_update' ],
+		'DELETE' => [ 'call' => 'user_delete' ]
 	]
 ];
 
@@ -48,7 +48,8 @@ const CONFIG_SCHEMA = [
 		'dbdsn' => Shortner::VALUE_STR,
 		'dbuser' => Shortner::VALUE_STR,
 		'dbpass' => Shortner::VALUE_STR,
-		'dbopts' => Shortner::VALUE_ARR
+		'dbopts' => Shortner::VALUE_ARR,
+		'dbshadow' => Shortner::VALUE_BOOL
 	]
 ];
 

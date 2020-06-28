@@ -3,7 +3,7 @@
 htmasterdomain = "domain.ltd"
 htservicedomain = "dom.in.ltd"
 htbackenddomain = "third.domain.ltd"
-htssr = TRUE
+htssr = true
 ht404 = ""
 ht50x = ""
 
@@ -17,3 +17,4 @@ dbdsn = "sqlite:../db/db.sqlite"
 dbuser = ""
 dbpass = ""
 dbopts[empty] =
+dbshadow = true

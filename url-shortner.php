@@ -29,17 +29,20 @@ interface DatabaseInterface {
 	public function disconnect();
 	public function transaction();
 	public function commit();
+	public function rollback();
+	public function end();
+	public function shadow($collection, $shadow, $event, $id_keys, $keys_shadow);
+	public function prepare();
 	public function statement($command, $collection, $clauses);
 	public function run();
 	public function select($keys, $distinct);
 	public function set($param, $value, $type);
 	public function where($param, $value, $type, $condition);
 	public function limit($param, $start, $end);
-	public function prepare();
-	public function fetch($table);
-	public function add($table);
-	public function update($table);
-	public function remove($table);
+	public function fetch($collection);
+	public function add($collection);
+	public function update($collection);
+	public function remove($collection);
 }
 
 /**
@@ -60,18 +63,36 @@ interface DataInterface {
 	public function user_get_by_name($user);
 	public function user_add($name, $password);
 	public function user_delete($user_id, $purge);
-	public function user_authentication($user, $password);
+	public function user_match($user, $password);
 }
 
 /**
- * Interface for authenticator class
+ * Interface for logger class
  *
  * @interface
  */
-interface AuthenticatorInterface {
-	// public function route_resolver($locale, $search);
-	// public function name_resolver($locale, $search, $type, $subtype);
-	// public function action_call();
+interface LoggerInterface {
+	public function getToken();
+	public function getTime();
+}
+
+/**
+ * Interface for authentication class
+ *
+ * @interface
+ */
+interface AuthenticationInterface {
+	public function transaction();
+	public function commit();
+	public function flush();
+	public function get($key);
+	public function set($key, $value);
+	public function authorize($user_name, $user_password);
+	public function unauthorize();
+	public function isAuthorized();
+	public function setAuthorization($authorized);
+	public function setUserData($data);
+	public function getUserData();
 }
 
 /**
@@ -105,7 +126,6 @@ class Shortner implements ShortnerInterface {
 			else
 				throw 'Parse INI';
 		} catch (Exception $error) {
-			var_dump($error->getMessage());
 			die('Missing or wrong configuration file.');
 		}
 	}
@@ -114,15 +134,16 @@ class Shortner implements ShortnerInterface {
 		foreach ($schema as $section => $values) {
 			if (! \array_key_exists($section, $config))
 				throw new Exception(sprintf('Undef section: %s', $section));
+
 			if (! is_array($values))
 				throw new Exception("Value not arr");
 
 			foreach ($values as $key => $type) {
 				if (! \array_key_exists($key, $schema[$section]))
 					throw new Exception(sprintf('Undef key: %s', $key));
-				if (gettype($config[$section][$key]) !== $this->type($type)) {
+
+				if (gettype($config[$section][$key]) !== $this->type($type))
 					throw new Exception(sprintf('Wrong value: %s', $key));
-				}
 			}
 		}
 
@@ -176,7 +197,7 @@ class DatabaseException extends \Exception {}
  * @class
  */
 class Database implements DatabaseInterface {
-	private $config, $template, $dbh;
+	private $config, $template, $dbh, $sth;
 
 	private const SQL_TEMPLATES = [
 		'fetch' => 'SELECT %s FROM %s',
@@ -185,9 +206,9 @@ class Database implements DatabaseInterface {
 		'remove' => 'DELETE FROM %s'
 	];
 
-	protected $statement = [];
+	protected $statement, $command, $table;
 
-	function __construct($config_db, $collection_template) {
+	public function __construct($config_db, $collection_template) {
 		$this->config = $config_db;
 		$this->template = $collection_template;
 	}
@@ -233,6 +254,27 @@ class Database implements DatabaseInterface {
 		$this->sth->closeCursor();
 	}
 
+	public function shadow($collection, $shadow, $event, $id_keys, $keys_shadow) {
+		$time = date('c');
+
+		$this->fetch($collection);
+
+		foreach ($id_keys as $id_key)
+			$this->where($id_key[0], $id_key[1], $id_key[2]);
+
+		$blob = $this->run();
+
+		if (! empty($blob))
+			$blob = json_encode($blob);
+
+		$this->add($shadow);
+
+		foreach ($keys_shadow as $key_id)
+			$this->set($key_id[0], "$key_id[1]", $key_id[2]);
+
+		$this->run();
+	}
+
 	public function statement($command, $collection, $clauses) {
 		if (! isset($this->template[$collection]))
 			throw new DatabaseException('Collection');			
@@ -243,6 +285,88 @@ class Database implements DatabaseInterface {
 		$this->command = $command;
 		$this->table = $this->template[$collection];
 		$this->statement = array_fill_keys($clauses, []);
+	}
+
+	public function prepare() {
+		if ($GLOBALS['debug_data']) var_dump($this);
+
+		if (
+			($this->command === 'add' || $this->command === 'update') &&
+			! isset($this->statement['set'])
+		) throw new DatabaseException(sprintf('Undef set for %s', $this->command));
+
+		if (
+			($this->command === 'update' || $this->command === 'remove') &&
+			! isset($this->statement['where'])
+		) throw new DatabaseException(sprintf('Undef where for %s', $this->command));
+
+		$_key_prefix_transfunc = function($key) {
+			return ":{$key}";
+		};
+		$_where_flat_transfunc = function(&$clause, $key, &$i) {
+			if ($i++ && empty($clause['condition']))
+				throw new DatabaseException('WHERE clause');
+
+			$clause = "{$clause['condition']} {$key}=:{$key}";
+		};
+
+		$sql = self::SQL_TEMPLATES[$this->command];
+		$values = [];
+
+		if (isset($this->statement['set'])) {
+			$params = array_keys($this->statement['set']);
+
+			$vars = array_map($_key_prefix_transfunc, $params);
+
+			$sql = sprintf($sql, $this->table, implode(',', $params), implode(',', $vars));
+
+			$values += $this->statement['set'];
+		}
+
+		if (isset($this->statement['select'])) {
+			$select = '';
+
+			if ($this->statement['select']['distinct'])
+				$select = 'DISTINCT ';
+
+			if ($this->statement['select']['keys']) {
+				$keys = array_values($this->statement['select']['keys']);
+
+				$select .= implode(',', $keys);
+			} else {
+				$select .= '*';
+			}
+
+			$sql = sprintf($sql, $select, $this->table);
+		} else {
+			$sql = sprintf($sql, $this->table);
+		}
+
+		if (isset($this->statement['where'])) {
+			$where = $this->statement['where'];
+
+			array_walk($where, $_where_flat_transfunc, 0);
+
+			$sql .= ' WHERE' . implode(' ', $where);
+
+			$values += $this->statement['where'];
+		}
+
+		$this->sth = $this->dbh->prepare($sql);
+
+		foreach ($values as $param => $set) {
+			if ($set['type'] === 6) {
+				$set['value'] = json_encode($set['value']);
+				$set['type'] = 2;
+			}
+
+			$this->sth->bindValue(":{$param}", $set['value'], $set['type']);
+		}
+
+		if ($GLOBALS['debug_data']) {
+			var_dump($sql);
+			var_dump($this->sth->debugDumpParams());
+		}
 	}
 
 	public function run() {
@@ -268,108 +392,37 @@ class Database implements DatabaseInterface {
 			'distinct' => $distinct ? true : false,
 			'keys' => is_array($keys) ? $keys : NULL
 		];
+
+		return $this;
 	}
 
-	public function set($param, $value, $type) {
+	public function set($param, $value, $type = 2) {
 		$this->statement['set'][$param] = [
 			'value' => $value,
 			'type' => $type
 		];
+
+		return $this;
 	}
 
-	public function where($param, $value, $type, $condition = '') {
+	public function where($param, $value, $type = 2, $condition = '') {
+		if (! empty($this->statement['where']) && ! $condition)
+			$condition = 'and';
+
 		$this->statement['where'][$param] = [
 			'condition' => strtoupper($condition),
 			'value' => $value,
 			'type' => $type
 		];
+
+		return $this;
 	}
 
 	public function limit($param, $start, $end) {
 		$this->statement['limit'][$param]['start'] = (int) $start;
 		$this->statement['limit'][$param]['end'] = (int) $end;
-	}
 
-	public function prepare() {
-		if ($GLOBALS['debug_data']) var_dump($this);
-
-		if (
-			($this->command === 'add' || $this->command === 'update') &&
-			! isset($this->statement['set'])
-		) throw new DatabaseException(sprintf('Undef set for %s', $this->command));
-
-		if (
-			($this->command === 'update' || $this->command === 'remove') &&
-			! isset($this->statement['where'])
-		) throw new DatabaseException(sprintf('Undef where for %s', $this->command));
-
-		$_key_prefix_transfunc = function($key) {
-			return ":{$key}";
-		};
-		$_where_flat_transfunc = function(&$clause, $key, &$i) {
-			if ($i++ && empty($clause['condition']))
-				throw new DatabaseException('WHERE clause');
-
-			$clause = "{$clause['condition']} {$key} = :{$key}";
-		};
-
-		$sql = self::SQL_TEMPLATES[$this->command];
-		$values = [];
-
-		if (isset($this->statement['set'])) {
-			$params = array_keys($this->statement['set']);
-
-			$vars = array_map($_key_prefix_transfunc, $params);
-
-			$sql = sprintf($sql, $this->table, implode(', ', $params), implode(', ', $vars));
-
-			$values += $this->statement['set'];
-		}
-
-		if (isset($this->statement['select'])) {
-			$select = '';
-
-			if ($this->statement['select']['distinct'])
-				$select = 'DISTINCT ';
-
-			if ($this->statement['select']['keys']) {
-				$keys = array_values($this->statement['select']['keys']);
-
-				$select .= implode(', ', $keys);
-			} else {
-				$select .= '*';
-			}
-
-			$sql = sprintf($sql, $select, $this->table);
-		} else {
-			$sql = sprintf($sql, $this->table);
-		}
-
-		if (isset($this->statement['where'])) {
-			$where = $this->statement['where'];
-
-			array_walk($where, $_where_flat_transfunc, 0);
-
-			$sql .= ' WHERE' . implode(' ', $where);
-
-			$values += $this->statement['where'];
-		}
-
-		$this->sth = $this->dbh->prepare($sql);
-
-		foreach ($values as $param => $set) {
-			if ($set['type'] === Shortner::VALUE_ARR) {
-				$set['value'] = json_encode($set['value']);
-				$set['type'] = Shortner::VALUE_STR;
-			}
-
-			$this->sth->bindValue(":{$param}", $set['value'], $set['type']);
-		}
-
-		if ($GLOBALS['debug_data']) {
-			var_dump($sql);
-			var_dump($this->sth->debugDumpParams());
-		}
+		return $this;
 	}
 
 	public function fetch($collection, $keys = NULL, $distinct = false) {
@@ -391,57 +444,69 @@ class Database implements DatabaseInterface {
 }
 
 
-class DataException extends \Exception {}
-
 /**
  * @class
  */
 class Data implements DataInterface {
-	private $config, $data;
+	private $config, $data, $enable_shadow;
 
 	public const COLLECTION_TEMPLATE = [
 		'store' => 'urls_store',
 		'domains' => 'urls_domains',
-		'users' => 'urls_users'
+		'users' => 'urls_users',
+		'shadows' => 'urls_shadows'
 	];
 
-	function __construct($config, $data) {
+	public function __construct($config, $data) {
 		$this->config = $config;
 		$this->data = $data;
+		$this->enable_shadow = $this->config['Database']['dbshadow'];
 	}
 
 	public function store_list($domain_id = "domain5ef778d51cc032.56503922") {
+		$event = $this->call('store', 'list', false);
+
 		$user_id = "admin5ef76aa12338e5.58992943";
 		//auth
 		$this->data->fetch('store', ['store_index', 'store_slug', 'store_url']);
 
-		$this->data->where('user_id', $user_id, Shortner::VALUE_STR);
-		$this->data->where('domain_id', $domain_id, Shortner::VALUE_STR, 'and');
+		$this->data
+			->where('user_id', $user_id)
+			->where('domain_id', $domain_id);
+
+		var_dump($this);
 
 		return $this->data->run();
 	}
 
-	public function store_add($domain_id = "domain5ef778d51cc032.56503922", $url) {
+	public function store_add($domain_id, $url) {
 		//auth
+		$event = $this->call('store', 'add');
 		$this->data->add('store');
 
 		$user_id = "admin5ef76aa12338e5.58992943";
-		$store_id = uniqid('store', true);
+		$store_id = $this->uniqid('store', $event);
 		//validate
 		$store_url = $url;
 		$shortner = Shortner::shortner($store_url);
 
-		$this->data->set('store_id', $store_id, Shortner::VALUE_STR);
-		$this->data->set('user_id', $user_id, Shortner::VALUE_STR);
-		$this->data->set('domain_id', $domain_id, Shortner::VALUE_STR);
-		$this->data->set('store_index', $shortner['index'], Shortner::VALUE_STR);
-		$this->data->set('store_slug', $shortner['slug'], Shortner::VALUE_STR);
-		$this->data->set('store_url', $url, Shortner::VALUE_STR);
+		$this->data
+			->set('store_id', $store_id)
+			->set('user_id', $user_id)
+			->set('domain_id', $domain_id)
+			->set('store_index', $shortner['index'])
+			->set('store_slug', $shortner['slug'])
+			->set('store_url', $store_url)
+			->set('event', $event->getToken())
+			->set('store_time_creation', $event->getTime());
 
 		return $this->data->run();
 	}
 
 	public function store_update($store_id, $url) {
+		$event = $this->call('store', 'update');
+		$this->shadow('store', ['store_id' => $store_id]);
+
 		//auth
 		$this->data->update('store');
 
@@ -449,147 +514,393 @@ class Data implements DataInterface {
 		$store_url = $url;
 		$shortner = Shortner::shortner($store_url);
 
-		$this->data->set('store_index', $shortner['index'], Shortner::VALUE_STR);
-		$this->data->set('store_slug', $shortner['slug'], Shortner::VALUE_STR);
-		$this->data->set('store_url', $store_url, Shortner::VALUE_STR);
-		$this->data->where('store_id', $store_id, Shortner::VALUE_STR);
+		$this->data
+			->set('store_index', $shortner['index'])
+			->set('store_slug', $shortner['slug'])
+			->set('store_url', $store_url)
+			->set('event', $event->getToken())
+			->set('store_time_modified', $event->getTime())
+			->where('store_id', $store_id);
 
 		return $this->data->run();
 	}
 
 	public function store_delete($store_id) {
+		$event = $this->call('store', 'delete');
+		$this->shadow('store', ['store_id' => $store_id]);
+
 		//auth
 		$this->data->remove('store');
 
-		$this->data->where('store_id', $id, Shortner::VALUE_STR);
+		$this->data
+			->where('store_id', $store_id);
 
 		return $this->data->run();
 	}
 
 	public function domain_get($domain_id) {
+		$event = $this->call('domain', 'get', false);
+
 		//auth
 		$this->data->fetch('domains', ['domain_master', 'domain_service']);
 
-		$this->data->where('domain_id', $domain_id, Shortner::VALUE_STR);
+		$this->data
+			->where('domain_id', $domain_id);
 
 		return $this->data->run();
 	}
 
 	public function domain_list($user_id) {
+		$event = $this->call('domain', 'list', false);
+
 		//auth
 		$this->data->fetch('domains', ['domain_master', 'domain_service']);
 
-		$this->data->where('user_id', $user_id, Shortner::VALUE_STR);
+		$this->data
+			->where('user_id', $user_id);
 
 		return $this->data->run();
 	}
 
 	public function domain_add($user_id, $master, $service) {
+		$event = $this->call('domain', 'add');
+
 		$this->data->add('domains');
 
 		$user_id = "admin5ef76aa12338e5.58992943";
-		$domain_id = uniqid("domain", true);
+		$domain_id = $this->uniqid('domain', $event);
 
-		$this->data->set('domain_id', $domain_id, Shortner::VALUE_STR);
-		$this->data->set('user_id', $user_id, Shortner::VALUE_STR);
-		$this->data->set('domain_master', $master, Shortner::VALUE_STR);
-		$this->data->set('domain_service', $service, Shortner::VALUE_STR);
+		$this->data
+			->set('domain_id', $domain_id)
+			->set('user_id', $user_id)
+			->set('domain_master', $master)
+			->set('domain_service', $service)
+			->set('event', $event->getToken())
+			->set('domain_time_creation', $event->getTime());
 
 		return $this->data->run();
 	}
 
 	public function domain_update($domain_id, $master, $service) {
+		$event = $this->call('domain', 'update');
+		$this->shadow('domains', ['domain_id' => $domain_id]);
+
 		$this->data->update('domains');
 
-		$this->data->set('domain_id', $domain_id, Shortner::VALUE_STR);
-		$this->data->set('domain_master', $master, Shortner::VALUE_STR);
-		$this->data->set('domain_service', $service, Shortner::VALUE_STR);
+		$this->data
+			->set('domain_id', $domain_id)
+			->set('domain_master', $master)
+			->set('domain_service', $service)
+			->set('event', $event->getToken())
+			->set('domain_time_modified', $event->getTime());
 
 		return $this->data->run();
 	}
 
 	public function domain_delete($domain_id, $purge) {
+		$event = $this->call('domain', 'delete');
+		$this->shadow('domains', ['domain_id' => $domain_id]);
+
 		//superuser or sameid
 		$this->data->remove('domains');
 
-		$this->data->set('domain_id', $domain_id, Shortner::VALUE_STR);
+		$this->data
+			->set('domain_id', $domain_id);
 
 		return $this->data->run();
 	}
 
 	public function user_get_by_id($user_id) {
+		$event = $this->call('user', 'get_by_id', false);
+
 		$this->data->fetch('users', ['user_name']);
 
-		$this->data->where('user_id', $user_id, Shortner::VALUE_STR);
+		$this->data
+			->where('user_id', $user_id);
 
 		return $this->data->run();
 	}
 
 	public function user_get_by_name($user_name) {
+		$event = $this->call('user', 'get_by_name', false);
+
 		$this->data->fetch('users', ['user_name']);
 
-		$this->data->where('user_name', $user_name, Shortner::VALUE_STR);
+		$this->data
+			->where('user_name', $user_name);
 
 		return $this->data->run();
 	}
 
 	public function user_add($user_name, $user_password) {
+		$event = $this->call('user', 'add');
+
 		//superuser or sameid
 		//acl?
 		$user_name = trim($user_name);
 
 		if (! empty($this->user_get_by_name($user_name)))
-			throw new DataException('User name exists');
+			throw new DataException('User name already exists');
+
+		$user_acl = '';
 
 		//single data statement
 		$this->data->add('users');
 
-		$user_id = uniqid($user_name, true);
+		$user_id = $this->uniqid('user', $event);
 		$user_pass = password_hash($user_password, PASSWORD_DEFAULT);
 
-		$this->data->set('user_id', $user_id, Shortner::VALUE_STR);
-		$this->data->set('user_name', $user_name, Shortner::VALUE_STR);
-		$this->data->set('user_pass', $user_pass, Shortner::VALUE_STR);
+		$this->data
+			->set('user_id', $user_id)
+			->set('user_acl', $user_acl)
+			->set('user_email', $user_email)
+			->set('user_name', $user_name)
+			->set('user_pass', $user_pass)
+			->set('event', $event->getToken())
+			->set('user_time_creation', $event->getTime());
+
+		return $this->data->run();
+	}
+
+	public function user_update($user_name, $user_password) {
+		$event = $this->call('user', 'update');
+
+		//superuser or sameid
+		//acl?
+		$user_name = trim($user_name);
+
+		if (! empty($this->user_get_by_name($user_name)))
+			throw new DataException('User name already exists');
+
+		//single data statement
+		$this->data->add('users');
+
+		$user_id = $this->uniqid('user', $event);
+		$user_pass = password_hash($user_password, PASSWORD_DEFAULT);
+
+		$this->data
+			->set('user_name', $user_name)
+			->set('user_pass', $user_pass)
+			->set('event', $event->getToken())
+			->set('user_time_modified', $event->getTime());
 
 		return $this->data->run();
 	}
 
 	public function user_delete($user_id, $purge) {
+		$event = $this->call('user', 'delete');
+
+		$this->shadow('users', ['user_id' => $user_id]);
+
 		//superuser or sameid
 		$this->data->remove('users');
 
-		$this->data->set('user_id', $id, Shortner::VALUE_STR);
+		$this->data
+			->set('user_id', $user_id);
 
 		return $this->data->run();
 	}
 
-	public function user_authentication($user_name, $user_password) {
-		$this->data->fetch('user', ['user_pass']);
+	public function user_match($user_name, $user_password) {
+		$this->data->fetch('users', ['user_id', 'user_acl', 'user_name']);
 
-		$this->data->set('user_name', $name, Shortner::VALUE_STR);
+		$this->data
+			->where('user_name', $user_name);
+		//	->where('user_email', $user_email, Shortner::VALUE_STR, 'or');
 
 		$row = $this->data->run();
 
-		return ($row && password_verify($password, $row['user_pass']));
+		if (isset($row['user_id']))
+			$row['user_match'] = password_verify($user_password, $row['user_pass']);
+
+		return $row;
+	}
+
+	protected function shadow($collection, $id_key) {
+		if (! $this->enable_shadow) return;
+
+		$this->data->shadow($collection, 'shadows', $this->event,
+			[[$id_key[0], $id_key[1], Shortner::VALUE_STR]],
+			[
+				['event', '{$event}', Shortner::VALUE_STR],
+				['shadow_time', '{$time}', Shortner::VALUE_STR],
+				['shadow_blob', '{$blob}', Shortner::VALUE_STR]
+			]
+		);
+	}
+
+	protected function uniqid($callec, $event) {
+		$digest = "{$callec}|{$this->epoch}|{$this->hash}";
+
+		return md5($digest);
+	}
+
+	protected function call($callec, $callea, $write = true, $need_preauth = true) {
+		if ($need_preauth) {
+			$auth = new Authentication($this->config);
+
+			try {
+				if ($auth->isAuthorized()) $this->user = $auth->getUserData();
+				else throw 1;
+			} catch (Exception $error) {
+				throw new DataException('Unauth request'/*, $error*/);
+			}
+		}
+
+		$event = new Logger($callec, $callea, $write);
+
+		return $event;
 	}
 }
 
 
-class Authenticator implements AuthenticatorInterface {
-	function __construct() {
+class Logger implements LoggerInterface {
+	private $callee, $event, $time;
+	protected $epoch, $hash;
+
+	public function __construct($callec, $callea, $write = true) {
+		$time = time();
+
+		$this->callee = "{$callec}_{$callea}";
+		$this->epoch = $time;
+		$this->time = date('c', $time);
+
+		if ($write) {
+			$hash = random_bytes(4);
+			$hash = bin2hex($hash);
+
+			$this->hash = $hash;
+			$this->event = "{$time}|{$callea}|{$hash}";
+		} else {
+			$this->event = "{$time}|{$callea}";
+		}
+	}
+
+	public function getToken() {
+		return $this->event;
+	}
+
+	public function getTime() {
+		return $this->time;
+	}
+}
+
+class DataException extends Exception {}
+
+class Authentication implements AuthenticationInterface {
+	private $config, $data, $connection, $prefix;
+
+	public function __construct($config, $data = NULL, $connection = NULL) {
+		$this->config = $config;
+		$this->data = $data;
+		$this->connection = $connection;
+
+		$this->prefix = __NAMESPACE__;
+
+		$this->transaction();
+	}
+
+	public function __destruct() {
+		$this->commit();
+	}
+
+	public function transaction() {
+		ini_set('session.use_strict_mode', 1);
+
+		session_cache_limiter('nocache');
+		session_cache_expire(0);
+
+		session_start();
+
+		if (isset($_SESSION["{$this->prefix}"])) {
+			session_regenerate_id();
+		} else {
+			session_create_id("{$this->prefix}-");
+
+			$_SESSION["{$this->prefix}"] = microtime();
+		}
+	}
+
+	public function commit() {
+		session_commit();
+	}
+
+	public function flush() {
+		session_destroy();
 		session_start();
 	}
 
+	public function get($key) {
+		if (isset($_SESSION["{$this->prefix}-{$key}"]))
+			return $_SESSION["{$this->prefix}-{$key}"];
+
+		return NULL;
+	}
+
+	public function set($key, $value) {
+		$_SESSION["{$this->prefix}-{$key}"] = $value;
+	}
+
+	public function authorize($user_name, $user_password) {
+		if (! $this->data || ! $this->connection)
+			throw new Exception('Data');
+
+		$this->connection && $this->connection->connect();
+
+		$auth = $this->data->user_match($user_name, $user_password);
+
+		$this->connection && $this->connection->disconnect();
+
+		if ($auth && $auth['user_match'] === true) {
+			$this->setAuthorization(true);
+			$this->setUserData($auth);
+
+			return true;
+		} else {
+			$this->setAuthorization(false);
+		}
+
+		return false;
+	}
+
+	public function unauthorize() {
+		$this->flush();
+	}
+
+	public function isAuthorized() {
+		return $this->get('authorized') ? true : false;
+	}
+
+	public function setAuthorization($authorized) {
+		if ($authorized) $this->set('authorized', true);
+		else $this->flush();
+	}
+
+	public function setUserData($data) {
+		$this->set('-data-id', $data['user_id']);
+		$this->set('-data-acl', $data['user_acl']);
+		$this->set('-data-name', $data['user_name']);
+	}
+
+	public function getUserData() {
+		$data = [
+			'id' => $this->get('-data-id'),
+			'acl' => $this->get('-data-acl'),
+			'name' => $this->get('-data-name')
+		];
+
+		return $data;
+	}
 }
 
 
-class APIException extends \Exception {}
+class APIException extends Exception {}
 
 /**
  * @class
  */
 class API implements ApiInterface {
-	function __construct() {
+	public function __construct() {
 		if (! class_exists('\urls\UrlsData'))
 			throw new Error('Undef class UrlsData');
 
@@ -609,18 +920,15 @@ class API implements ApiInterface {
 		$this->data = new \urls\UrlsData($this->config, $this->db);
 		$this->routes = \urls\ROUTES;
 
-		if (isset($_SERVER['PATH_INFO'])) {
-			$method = $_SERVER['REQUEST_METHOD'];
-			$endpoint = $this->path($_SERVER['PATH_INFO']);
+		$path_info = isset($_SERVER['PATH_INFO']) ? $_SERVER['PATH_INFO'] : '/';
+		$method = $_SERVER['REQUEST_METHOD'];
+		$endpoint = $this->path($path_info);
 
-			//path info length
-			$this->router($method, $endpoint, $_SERVER['PATH_INFO']);
-		} else {
-			throw new Error('ERROR');
-		}
+		//path info length
+		$this->router($method, $endpoint, $path_info);
 	}
 
-	function __destruct() {
+	public function __destruct() {
 		$this->db->disconnect();
 
 		restore_error_handler();
@@ -651,13 +959,35 @@ class API implements ApiInterface {
 		if ($sq = strpos('?', $path_info))
 			$path_info = substr($path_info, 0, $sq);
 
-		$path_info = rtrim($path_info, '/');
+		if ($path_info != '/')
+			$path_info = rtrim($path_info, '/');
 
 		return $path_info;
 	}
 
-	public function auth() {
-		
+	public function authenticate($user_name, $user_password) {
+		$auth = new Authentication($this->config, $this->data, $this->db);
+
+		try {
+			$auth->authorize($user_name, $user_password);
+		} catch (Exception $error) {
+			//var_dump($error);
+
+			throw new APIException('authenticate'/*, $error*/);
+		}
+	}
+
+	public function isAuthenticated() {
+		$auth = new Authentication($this->config);
+
+		try {
+			if ($auth->isAuthorized()) return true;
+			else return false;
+		} catch (Exception $error) {
+			//var_dump($error);
+
+			throw new APIException('isAuthenticated'/*, $error*/);
+		}
 	}
 
 	public function router($method, $endpoint, $uri) {
@@ -666,27 +996,23 @@ class API implements ApiInterface {
 		if (! isset($this->routes[$endpoint]) && ! isset($this->routes[$endpoint][$method]))
 			return $this->unreachable();
 
-		$call = $this->routes[$endpoint][$method]['call'];
-		$auth = $this->routes[$endpoint][$method]['auth'];
-
-		if ($auth && ! $this->auth()) {
-			$this->deny();
+		if (isset($this->routes[$endpoint][$method]['auth'])) {
+			$this->request($this, 'authenticate', $_REQUEST);
 
 			exit;
-		} else {
-			$this->allow();
+		} else if (isset($this->routes[$endpoint][$method]['call'])) {
+			if ($this->isAuthenticated()) $this->allow();
+			else return $this->deny();
 		}
+
+		$call = $this->routes[$endpoint][$method]['call'];
 
 		if ($call && method_exists($this->data, $call)) {
 			//array length limit
-			$this->request($call, $_REQUEST);
-
-			exit;
+			return $this->request($this->data, $call, $_REQUEST);
 		}
 
-		$this->unreachable();
-
-		exit;
+		return $this->unreachable();
 	}
 
 	public function response($status, $data) {
@@ -699,7 +1025,7 @@ class API implements ApiInterface {
 		echo json_encode($output);
 	}
 
-	public function request($call, $request) {
+	public function request($func, $call, $request) {
 		$_method_params_transfunc = function(&$param, $i) {
 			$param = $param->name;
 		};
@@ -707,7 +1033,7 @@ class API implements ApiInterface {
 		try {
 			$request_params = array_keys($request);
 
-			$method = new ReflectionMethod($this->data, $call);
+			$method = new ReflectionMethod($func, $call);
 			$method_params = $method->getParameters();
 
 			array_walk($method_params, $_method_params_transfunc);
@@ -726,7 +1052,7 @@ class API implements ApiInterface {
 			if ($request_params !== $request)
 				throw $this->raise_parameters_missing($method_params);
 
-			$data = call_user_func_array([$this->data, $call], $request);
+			$data = call_user_func_array([$func, $call], $request);
 		} catch (APIException $error) {
 			$msg = sprintf('Uncaught call. %s', $error->getMessage());
 
@@ -752,10 +1078,20 @@ class API implements ApiInterface {
 
 	public function deny() {
 		header('Status: 403', true, 403);
+
+		exit;
+	}
+
+	public function busy() {
+		header('Status: 401', true, 401);
+
+		exit;
 	}
 
 	public function unreachable() {
 		header('Status: 404', true, 404);
+
+		exit;
 	}
 
 	public function no_content() {
