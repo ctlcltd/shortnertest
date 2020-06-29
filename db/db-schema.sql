@@ -5,7 +5,7 @@ CREATE TABLE "urls_store" (
 	[user_id] VARCHAR NOT NULL,
 	[domain_id] VARCHAR NOT NULL,
 	[event] VARCHAR NOT NULL,
-	[store_time_creation] VARCHAR NOT NULL,
+	[store_time_created] VARCHAR NOT NULL,
 	[store_time_modified] VARCHAR NOT NULL,
 	[store_index] VARCHAR NOT NULL,
 	[store_slug] VARCHAR NOT NULL,
@@ -19,10 +19,10 @@ CREATE TABLE "urls_domains" (
 	[domain_id] VARCHAR UNIQUE NOT NULL,
 	[user_id] VARCHAR NOT NULL,
 	[event] VARCHAR NOT NULL,
-	[domain_time_creation] VARCHAR NOT NULL,
+	[domain_time_created] VARCHAR NOT NULL,
 	[domain_time_modified] VARCHAR NOT NULL,
 	[domain_master] VARCHAR NOT NULL,
-	[domain_service] VARCHAR NOT NULL
+	[domain_service] VARCHAR NOT NULL,
 	[domain_enable] SMALLINT NULL
 );
 
@@ -32,7 +32,7 @@ CREATE TABLE "urls_users" (
 	[user_id] VARCHAR UNIQUE NOT NULL,
 	[user_acl] VARCHAR NOT NULL,
 	[event] VARCHAR NOT NULL,
-	[user_time_creation] VARCHAR NOT NULL,
+	[user_time_created] VARCHAR NOT NULL,
 	[user_time_modified] VARCHAR NOT NULL,
 	[user_pending] VARCHAR NULL,
 	[user_email] VARCHAR NOT NULL,

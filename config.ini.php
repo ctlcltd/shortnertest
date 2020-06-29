@@ -1,7 +1,5 @@
 <?php
 [Host]
-htmasterdomain = "domain.ltd"
-htservicedomain = "dom.in.ltd"
 htbackenddomain = "third.domain.ltd"
 htssr = true
 ht404 = ""
@@ -18,3 +16,8 @@ dbuser = ""
 dbpass = ""
 dbopts[empty] =
 dbshadow = true
+
+[Network]
+nwsetup = false
+nwuseracl = "store,domains"
+nwuseractionlifetime = 259200

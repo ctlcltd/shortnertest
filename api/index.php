@@ -34,8 +34,6 @@ const ROUTES = [
 
 const CONFIG_SCHEMA = [
 	'Host' => [
-		'htmasterdomain' => Shortner::VALUE_STR,
-		'htservicedomain' => Shortner::VALUE_STR,
 		'htbackenddomain' => Shortner::VALUE_STR,
 		'htssr' => Shortner::VALUE_BOOL,
 		'ht404' => Shortner::VALUE_STR,
@@ -50,6 +48,11 @@ const CONFIG_SCHEMA = [
 		'dbpass' => Shortner::VALUE_STR,
 		'dbopts' => Shortner::VALUE_ARR,
 		'dbshadow' => Shortner::VALUE_BOOL
+	],
+	'Network' => [
+		'nwsetup' => Shortner::VALUE_BOOL,
+		'nwuseracl' => Shortner::VALUE_STR,
+		'nwuseractionlifetime' => Shortner::VALUE_INT
 	]
 ];
 
