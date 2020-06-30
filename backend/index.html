@@ -7,9 +7,25 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<main id="login">
-  <form action method="post" enctype="application/x-www-form-urlencoded">
-  </form>
+<main id="signin">
+  <div>
+    <form id="sign_login" action method="post">
+      <legend>Login</legend>
+      <fieldset>
+        <div>
+          <label for="user_name" hidden>Email address or User name</label>
+          <input type="text" name="user_name" placeholder="Email address or User name">
+        </div>
+        <div>
+          <label for="user_name" hidden>Password</label>
+          <input type="password" name="user_password" placeholder="Password">
+        </div>
+      </fieldset>
+      <fieldset>
+        <button type="submit" class="big">Login</button>
+      </fieldset>
+    </form>
+  </div>
 </main>
 <main id="list">
   <table>
@@ -29,7 +45,50 @@
     </tbody>
   </table>
 </main>
-<script>
-</script>
+<main id="api-test">
+  <form id="api_request" action method="post">
+    <legend>API Test</legend>
+    <fieldset>
+      <p>Request</p>
+      <div>
+        <label for="endpoint">Endpoint</label>
+        <select name="endpoint"></select>
+      </div>
+      <div>
+        <label for="method">Request method</label>
+        <select name="method" style="font-weight: bold"></select>
+      </div>
+      <div>
+        <label for="route">Route</label>
+        <input type="text" name="route" readonly>
+      </div>
+      <div>
+        <label for="body">Request body</label>
+        <textarea name="body"></textarea>
+      </div>
+    </fieldset>
+    <fieldset>
+      <button type="submit" class="big">Test</button>
+    </fieldset>
+  </form>
+  <form id="api_response">
+    <fieldset>
+      <p>Response</p>
+      <div>
+        <label for="response-status">Response Status</label>
+        <input name="response-status"  style="font-weight: bold" readonly>
+      </div>
+      <div>
+        <label for="response-body">Response Body</label>
+        <textarea name="response-body" rows="7" readonly></textarea>
+      </div>
+      <div>
+        <label for="response-headers">Response Headers</label>
+        <textarea name="response-headers" rows="3" readonly></textarea>
+      </div>
+    </fieldset>
+  </form>
+</main>
+<script src="script.js"></script>
 </body>
 </html>

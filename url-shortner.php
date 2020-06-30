@@ -34,12 +34,12 @@ interface DatabaseInterface {
 	public function end();
 	public function shadow($collection, $shadow, $event, $id_keys, $keys_shadow);
 	public function prepare();
-	public function statement($command, $collection, $clauses);
+	public function process($command, $collection, $allowed);
 	public function run();
-	public function select($keys, $distinct);
+	public function select($keys, $single, $distinct);
 	public function set($param, $value, $type);
 	public function where($param, $value, $type, $condition);
-	public function limit($param, $start, $end);
+	public function limit($limit_offset, $limit);
 	public function fetch($collection);
 	public function add($collection);
 	public function update($collection);
@@ -88,7 +88,7 @@ interface AuthenticationInterface {
 	public function flush();
 	public function get($key);
 	public function set($key, $value);
-	public function authorize($user_name, $user_password);
+	public function authorize($user_email, $user_name, $user_password);
 	public function unauthorize();
 	public function isAuthorized();
 	public function setAuthorization($authorized);
@@ -205,11 +205,21 @@ class Database implements DatabaseInterface {
 	private const SQL_TEMPLATES = [
 		'fetch' => 'SELECT %s FROM %s',
 		'add' => 'INSERT INTO %s (%s) VALUES(%s)',
-		'update' => 'UPDATE %s SET(%s) VALUES(%s)',
+		'update' => 'UPDATE %s SET %s',
 		'remove' => 'DELETE FROM %s'
 	];
+	private const SQL_CLAUSES = [
+		'select',
+		'count',
+		'set',
+		'values',
+		'where',
+		'group',
+		'sort',
+		'limit'
+	];
 
-	protected $statement, $command, $table;
+	protected $statement, $command, $table, $allowed;
 
 	public function __construct($config_db, $collection_template) {
 		$this->config = $config_db;
@@ -258,36 +268,43 @@ class Database implements DatabaseInterface {
 	}
 
 	public function shadow($collection, $shadow, $event, $id_keys, $keys_shadow) {
-		$time = date('c');
+		$token = $event->getToken();
+		$time = $event->getTime();
 
-		$this->fetch($collection);
+		$this->fetch($collection, NULL, true);
 
 		foreach ($id_keys as $id_key)
 			$this->where($id_key[0], $id_key[1], $id_key[2]);
 
 		$blob = $this->run();
 
-		if (! empty($blob))
-			$blob = json_encode($blob);
-
 		$this->add($shadow);
 
-		foreach ($keys_shadow as $key_id)
-			$this->set($key_id[0], "$key_id[1]", $key_id[2]);
+		$shadow = compact('token', 'time', 'blob');
 
-		$this->run();
+		foreach ($keys_shadow as $key_id)
+			$this->set($key_id[0], $shadow[$key_id[1]], $key_id[2]);
+
+		return $this->run();
 	}
 
-	public function statement($command, $collection, $clauses) {
+	public function process($command, $collection, $clauses) {
 		if (! isset($this->template[$collection]))
-			throw new DatabaseException('Collection');			
+			throw new DatabaseException('Unknown collection');			
 
 		if (! in_array($command, ['fetch', 'add', 'update', 'remove']))
-			throw new DatabaseException('Command DatabaseException');
+			throw new DatabaseException('Unknown SQL command');
+
+		if (! empty(array_diff($clauses, self::SQL_CLAUSES)))
+			throw new DatabaseException('Unknown SQL clauses');
+
+		$sql_clauses = array_fill_keys(self::SQL_CLAUSES, false);
+		$clauses = array_fill_keys($clauses, true);
 
 		$this->command = $command;
 		$this->table = $this->template[$collection];
-		$this->statement = array_fill_keys($clauses, []);
+		$this->clauses = array_merge($sql_clauses, $clauses);
+		$this->statement = [];
 	}
 
 	public function prepare() {
@@ -306,31 +323,42 @@ class Database implements DatabaseInterface {
 		$_key_prefix_transfunc = function($key) {
 			return ":{$key}";
 		};
-		$_where_flat_transfunc = function(&$clause, $key, &$i) {
-			if ($i++ && empty($clause['condition']))
+		$_set_flat_transfunc = function(&$value, $key) {
+			$value = "{$key}=:{$key}";
+		};
+		$_group_flat_transfunc = function(&$value, $key) {
+			$value = "{$key} {$clause}";
+		};
+		$_where_flat_transfunc = function(&$value, $key, &$i) {
+			if ($i++ && empty($value['condition']))
 				throw new DatabaseException('WHERE clause');
 
-			$clause = "{$clause['condition']} {$key}=:{$key}";
+			$value = "{$value['condition']} {$key}=:{$key}";
 		};
 
 		$sql = self::SQL_TEMPLATES[$this->command];
 		$values = [];
 
-		if (isset($this->statement['set'])) {
-			$params = array_keys($this->statement['set']);
+		if ($this->clauses['set'] && isset($this->statement['set'])) {
+			if ($this->clauses['values']) {
+				$params = array_keys($this->statement['set']);
 
-			$vars = array_map($_key_prefix_transfunc, $params);
+				$vars = array_map($_key_prefix_transfunc, $params);
 
-			$sql = sprintf($sql, $this->table, implode(',', $params), implode(',', $vars));
+				$sql = sprintf($sql, $this->table, implode(',', $params), implode(',', $vars));
+			} else {
+				$params = $this->statement['set'];
+
+				array_walk($params, $_set_flat_transfunc);
+
+				$sql = sprintf($sql, $this->table, implode(',', $params));
+			}
 
 			$values += $this->statement['set'];
 		}
 
-		if (isset($this->statement['select'])) {
+		if ($this->clauses['select'] && isset($this->statement['select'])) {
 			$select = '';
-
-			if ($this->statement['select']['distinct'])
-				$select = 'DISTINCT ';
 
 			if ($this->statement['select']['keys']) {
 				$keys = array_values($this->statement['select']['keys']);
@@ -340,12 +368,37 @@ class Database implements DatabaseInterface {
 				$select .= '*';
 			}
 
+			if ($this->statement['select']['count'])
+				$select = "COUNT({$select})";
+
+			if ($this->statement['select']['distinct'])
+				$select = "DISTINCT {$select}";
+
 			$sql = sprintf($sql, $select, $this->table);
+
+			if (isset($this->statement['sort'])) {
+				$sort = $this->statement['sort'];
+
+				array_walk($sort, $_group_flat_transfunc);
+
+				$sql .= ' ORDER BY ' . implode(',', $sort);
+			}
+
+			if (isset($this->statement['group'])) {
+				$group = $this->statement['group'];
+
+				array_walk($group, $_group_flat_transfunc);
+
+				$sql .= ' GROUP BY ' . implode(',', $group);
+			}
+
+			if (isset($this->statement['limit']))
+				$sql .= ' LIMIT ' . implode(',', $this->statement['limit']);
 		} else {
 			$sql = sprintf($sql, $this->table);
 		}
 
-		if (isset($this->statement['where'])) {
+		if ($this->clauses['where'] && isset($this->statement['where'])) {
 			$where = $this->statement['where'];
 
 			array_walk($where, $_where_flat_transfunc, 0);
@@ -354,6 +407,8 @@ class Database implements DatabaseInterface {
 
 			$values += $this->statement['where'];
 		}
+
+		if ($GLOBALS['debug_data']) var_dump($sql);
 
 		$this->sth = $this->dbh->prepare($sql);
 
@@ -366,10 +421,7 @@ class Database implements DatabaseInterface {
 			$this->sth->bindValue(":{$param}", $set['value'], $set['type']);
 		}
 
-		if ($GLOBALS['debug_data']) {
-			var_dump($sql);
-			var_dump($this->sth->debugDumpParams());
-		}
+		if ($GLOBALS['debug_data']) var_dump($this->sth->debugDumpParams());
 	}
 
 	public function run() {
@@ -379,8 +431,14 @@ class Database implements DatabaseInterface {
 
 		if ($GLOBALS["debug_data"]) var_dump($this->dbh->errorInfo());
 
-		if ($results && $this->command === 'fetch')
-			$results = $this->sth->fetchAll(PDO::FETCH_ASSOC);
+		if ($results && $this->command === 'fetch') {
+			if ($this->statement['select']['single'])
+				$results = $this->sth->fetch(PDO::FETCH_ASSOC);
+			else
+				$results = $this->sth->fetchAll(PDO::FETCH_ASSOC);
+		}
+
+		if ($GLOBALS["debug_data"]) var_dump($results);
 
 		$this->end();
 
@@ -390,16 +448,33 @@ class Database implements DatabaseInterface {
 		return $results;
 	}
 
-	public function select($keys, $distinct) {
+	public function select($keys, $single, $distinct) {
+		if (! $this->clauses['select'])
+			throw new Exception('Select clause not allowed');
+
 		$this->statement['select'] = [
+			'single' => $single,
 			'distinct' => $distinct ? true : false,
+			'count' => false,
 			'keys' => is_array($keys) ? $keys : NULL
 		];
 
 		return $this;
 	}
 
+	public function count() {
+		if (! $this->clauses['count'])
+			throw new Exception('Count clause not allowed');
+
+		$this->statement['select']['count'] = true;
+
+		return $this;
+	}
+
 	public function set($param, $value, $type = 2) {
+		if (! $this->clauses['set'])
+			throw new Exception('Set clause not allowed');
+
 		$this->statement['set'][$param] = [
 			'value' => $value,
 			'type' => $type
@@ -409,6 +484,9 @@ class Database implements DatabaseInterface {
 	}
 
 	public function where($param, $value, $type = 2, $condition = '') {
+		if (! $this->clauses['where'])
+			throw new Exception('Where clause not allowed');
+
 		if (! empty($this->statement['where']) && ! $condition)
 			$condition = 'and';
 
@@ -421,28 +499,61 @@ class Database implements DatabaseInterface {
 		return $this;
 	}
 
-	public function limit($param, $start, $end) {
-		$this->statement['limit'][$param]['start'] = (int) $start;
-		$this->statement['limit'][$param]['end'] = (int) $end;
+	public function sort($param, $sort_by) {
+		if (! $this->clauses['sort'])
+			throw new Exception('Sort clause not allowed');
+
+		$this->statement['sort'][$param] = strtoupper($sort_by);
 
 		return $this;
 	}
 
-	public function fetch($collection, $keys = NULL, $distinct = false) {
-		$this->statement('fetch', $collection, ['where', 'limit']);
-		$this->select($keys, $distinct);
+	public function group($param, $group_by) {
+		if (! $this->clauses['group'])
+			throw new Exception('Group clause not allowed');
+
+		$this->statement['group'][$param] = strtoupper($group_by);
+
+		return $this;
+	}
+
+	public function limit($limit_offset, $limit = 0) {
+		if (! $this->clauses['limit'])
+			throw new Exception('Limit clause not allowed');
+
+		if (! $limit) {
+			$this->statement['limit']['to'] = (int) $limit_offset;
+		} else {
+			$this->statement['limit']['from'] = (int) $limit_offset;
+			$this->statement['limit']['to'] = (int) $limit;
+		}			
+
+		return $this;
+	}
+
+	public function fetch($collection, $keys = NULL, $single = false, $distinct = false) {
+		$this->process('fetch', $collection, [
+			'select',
+			'count',
+			'where',
+			'group',
+			'sort',
+			'limit'
+		]);
+
+		$this->select($keys, $single, $distinct);
 	}
 
 	public function add($collection) {
-		$this->statement('add', $collection, ['set']);
+		$this->process('add', $collection, ['set', 'values']);
 	}
 
 	public function update($collection) {
-		$this->statement('update', $collection, ['set', 'where']);
+		$this->process('update', $collection, ['set', 'where']);
 	}
 
 	public function remove($collection) {
-		$this->statement('remove', $collection, ['set', 'where']);
+		$this->process('remove', $collection, ['set', 'where']);
 	}
 }
 
@@ -465,6 +576,7 @@ class Data implements DataInterface {
 		$this->config = $config;
 		$this->data = $data;
 		$this->enable_shadow = $this->config['Database']['dbshadow'];
+		$this->need_preauth = true;
 
 		$this->user = NULL;
 	}
@@ -532,7 +644,7 @@ class Data implements DataInterface {
 			->set('store_index', $shortner->index)
 			->set('store_slug', $shortner->slug)
 			->set('store_url', $store_url)
-			->set('event', $event->getToken())
+			->set('event', $event->getToken(), Shortner::VALUE_ARR)
 			->set('store_time_created', $event->getTime());
 
 		return $this->data->run();
@@ -568,7 +680,7 @@ class Data implements DataInterface {
 			->set('store_index', $shortner->index)
 			->set('store_slug', $shortner->slug)
 			->set('store_url', $store_url)
-			->set('event', $event->getToken())
+			->set('event', $event->getToken(), Shortner::VALUE_ARR)
 			->set('store_time_modified', $event->getTime());
 
 		return $this->data->run();
@@ -599,7 +711,7 @@ class Data implements DataInterface {
 	public function domain_list($user_id) {
 		$event = $this->call('domain', 'list', false);
 
-		$this->data->fetch('domains', ['domain_master', 'domain_service']);
+		$this->data->fetch('domains', ['domain_id', 'domain_master', 'domain_service']);
 
 		$this->data->where('user_id', $user_id);
 
@@ -617,7 +729,7 @@ class Data implements DataInterface {
 
 		$this->data->add('domains');
 
-		$user_id = $this-
+		$user_id = $this->user->id;
 		$domain_id = $this->uniqid('domain', $event);
 
 		$this->data
@@ -625,7 +737,7 @@ class Data implements DataInterface {
 			->set('user_id', $user_id)
 			->set('domain_master', $master)
 			->set('domain_service', $service)
-			->set('event', $event->getToken())
+			->set('event', $event->getToken(), Shortner::VALUE_ARR)
 			->set('domain_time_created', $event->getTime());
 
 		return $this->data->run();
@@ -650,7 +762,7 @@ class Data implements DataInterface {
 		$service || $this->data->set('domain_service', $service);
 
 		$this->data
-			->set('event', $event->getToken())
+			->set('event', $event->getToken(), Shortner::VALUE_ARR)
 			->set('domain_time_modified', $event->getTime());
 
 		return $this->data->run();
@@ -688,6 +800,22 @@ class Data implements DataInterface {
 		return $this->data->run();
 	}
 
+	public function user_list() {
+		$event = $this->call('user', 'list', false);
+
+		$this->data->fetch('users', [
+			'user_id',
+			'user_acl',
+			'user_pending',
+			'user_email',
+			'user_name',
+			'user_pass',
+			'user_notify'
+		]);
+
+		return $this->data->run();
+	}
+
 	public function user_add($user_acl, $user_email, $user_name, $user_password, $user_notify) {
 		$event = $this->call('user', 'add');
 
@@ -702,13 +830,14 @@ class Data implements DataInterface {
 		if ($this->user_get_by_name($user_name))
 			throw new DataException('User name already exists');
 
-		$user_acl = $this->config["Network"]["nwuseracl"];
+		$user_acl = $user_acl ? $user_acl : $this->config["Network"]["nwuseracl"];
 
 		$this->data->add('users');
 
 		$user_id = $this->uniqid('user', $event);
 		$user_pass = password_hash($user_password, PASSWORD_DEFAULT);
 		$user_pending = $this->pending('activation');
+		$user_notify = $user_notify ? (int) $user_notify : 0;
 
 		$this->data
 			->set('user_id', $user_id)
@@ -717,7 +846,8 @@ class Data implements DataInterface {
 			->set('user_email', $user_email)
 			->set('user_name', $user_name)
 			->set('user_pass', $user_pass)
-			->set('event', $event->getToken())
+			->set('user_notify', $user_notify, Shortner::VALUE_INT)
+			->set('event', $event->getToken(), Shortner::VALUE_ARR)
 			->set('user_time_created', $event->getTime());
 
 		//auth
@@ -747,6 +877,8 @@ class Data implements DataInterface {
 				throw new DataException('User name already exists');
 		}
 
+		$this->shadow($event, 'users', ['user_id' => $user_id]);
+
 		$this->data->update('users');
 
 		$this->data->where('user_id', $user_id);
@@ -760,7 +892,7 @@ class Data implements DataInterface {
 		$user_pass || $this->data->set('user_pass', $user_pass);
 
 		$this->data
-			->set('event', $event->getToken())
+			->set('event', $event->getToken(), Shortner::VALUE_ARR)
 			->set('user_time_modified', $event->getTime());
 
 		//auth
@@ -781,15 +913,19 @@ class Data implements DataInterface {
 		return $this->data->run();
 	}
 
-	public function user_activation($user_email, $activation_token) {
-		$event = $this->call('user', 'activation');
+	public function user_activation($email, $token) {
+		$event = $this->call('user', 'activation', true, false);
 
-		if (! filter_var($user_email, FILTER_VALIDATE_EMAIL))
+		if (! filter_var($email, FILTER_VALIDATE_EMAIL))
 			throw new DataException('Not a valid e-mail address');
 
-		$user_email = filter_var($user_email, FILTER_SANITIZE_EMAIL);
+		//email privacy another public ID
+		//validate & sanitize
 
-		$this->data->fetch('users', ['user_id', 'user_time_created', 'user_pending']);
+		$user_email = filter_var($email, FILTER_SANITIZE_EMAIL);
+		$activation_token = $token;
+
+		$this->data->fetch('users', ['user_id', 'user_time_created', 'user_pending'], true);
 
 		$this->data->where('user_email', $user_email);
 
@@ -809,24 +945,26 @@ class Data implements DataInterface {
 			throw new DataException('User already activated');
 		else if ($event->epoch > $user_action_lifetime)
 			throw new DataException('User activation expired');
-		else if ($user_pending['digest'] !== $activation_token)
+		else if ($user_pending->digest !== $token)
 			throw new DataException('Bad request');
+
+		$this->shadow($event, 'users', ['user_id' => $user_id]);
 
 		$this->data->update('users');
 
 		$this->data->where('user_id', $user_id);
 
-		$this->data->set('user_pending', NULL);
+		$this->data->set('user_pending', NULL, Shortner::VALUE_NULL);
 
 		$this->data
-			->set('event', $event->getToken())
+			->set('event', $event->getToken(), Shortner::VALUE_ARR)
 			->set('user_time_modified', $event->getTime());
 
 		return $this->data->run();
 	}
 
 	public function user_match($user_email, $user_name, $user_password) {
-		$this->data->fetch('users', ['user_id', 'user_acl', 'user_name']);
+		$this->data->fetch('users', ['user_id', 'user_acl', 'user_name', 'user_pass'], true);
 
 		if ($user_email) $this->data->where('user_email', $user_email);
 		else $this->data->where('user_name', $user_name);
@@ -839,15 +977,47 @@ class Data implements DataInterface {
 		return $row;
 	}
 
-	protected function shadow($event, $collection, $id_key) {
-		if (! $this->enable_shadow) return;
+	public function install($user_email, $user_name, $user_password) {
+		$this->call('', 'install', false, true);
 
-		$this->data->shadow($collection, 'shadows', $event,
-			[[$id_key[0], $id_key[1], Shortner::VALUE_STR]],
+		if (! $this->config['Network']['nwsetup'])
+			throw new DataException('Bad request');
+
+		$this->data->fetch('users', ['user_id']);
+
+		$this->data->count()->limit(1);
+
+		$count = $this->data->run();
+
+		if (! empty($count))
+			throw new DataException('Already installed');
+
+		$user_acl = '*';
+		$user_notify = true;
+
+		$row = $this->user_add($user_acl, $user_email, $user_name, $user_password, $user_notify);
+
+		return $row;
+	}
+
+	public function exploiting() {
+		if (! $this->config['Network']['nwapitest'])
+			throw new DataException('Bad request');
+
+		return \urls\ROUTES;
+	}
+
+	protected function shadow($event, $collection, $id_key) {
+		if (! $this->enable_shadow) return NULL;
+
+		$key = key($id_key);
+
+		return $this->data->shadow($collection, 'shadows', $event,
+			[[$key, $id_key[$key], Shortner::VALUE_STR]],
 			[
-				['event', '{$event}', Shortner::VALUE_STR],
-				['shadow_time', '{$time}', Shortner::VALUE_STR],
-				['shadow_blob', '{$blob}', Shortner::VALUE_STR]
+				['event', 'token', Shortner::VALUE_ARR],
+				['shadow_time', 'time', Shortner::VALUE_STR],
+				['shadow_blob', 'blob', Shortner::VALUE_ARR]
 			]
 		);
 	}
@@ -884,16 +1054,24 @@ class Data implements DataInterface {
 	//       {"*", "store": ["list", "query", "get", "add"], "domains": "*"}
 	//
 
-	protected function call($callec, $callea, $write = true, $need_preauth = true) {
-		if ($need_preauth) {
-			$auth = new Authentication($this->config);
+	protected function authorize() {
+		$auth = new Authentication($this->config);
 
-			try {
-				if ($auth->isAuthorized()) $this->user = $auth->getUserData();
-				else throw 1;
-			} catch (Exception $error) {
-				throw new DataException('Unauth request'/*, $error*/);
-			}
+		try {
+			if ($auth->isAuthorized()) $this->user = $auth->getUserData();
+			else throw new Exception('Unauth');
+		} catch (Exception $error) {
+			throw new DataException('Unauth request'/*, $error*/);
+		}
+	}
+
+	protected function call($callec, $callea, $write = true, $need_preauth = true) {
+		if ($need_preauth && $this->need_preauth) {
+			$this->authorize();
+
+			$this->need_preauth = true;
+		} else {
+			$this->need_preauth = false;
 		}
 
 		$event = new Logger($callec, $callea, $write);
@@ -905,7 +1083,7 @@ class Data implements DataInterface {
 
 class Logger implements LoggerInterface {
 	private $callee, $event, $time;
-	protected $epoch, $hash;
+	public $epoch, $hash;
 
 	public function __construct($callec, $callea, $write = true) {
 		$time = $_SERVER['REQUEST_TIME'];
@@ -913,20 +1091,21 @@ class Logger implements LoggerInterface {
 		$this->callee = "{$callec}_{$callea}";
 		$this->epoch = $time;
 		$this->time = date('c', $time);
+		$this->event = new stdClass;
+		$this->event->time = $time;
+		$this->event->callea = $callea;
 
 		if ($write) {
 			$hash = random_bytes(4);
 			$hash = bin2hex($hash);
 
 			$this->hash = $hash;
-			$this->event = "{$time}|{$callea}|{$hash}";
-		} else {
-			$this->event = "{$time}|{$callea}";
+			$this->event->hash = $hash;
 		}
 	}
 
 	public function getToken() {
-		return $this->event;
+		return (array) $this->event;
 	}
 
 	public function getTime() {
@@ -963,6 +1142,8 @@ class Authentication implements AuthenticationInterface {
 
 		session_start();
 
+		if ($GLOBALS['debug_session']) var_dump($_SESSION);
+
 		if (isset($_SESSION["{$this->prefix}"])) {
 			session_regenerate_id();
 		} else {
@@ -992,19 +1173,21 @@ class Authentication implements AuthenticationInterface {
 		$_SESSION["{$this->prefix}-{$key}"] = $value;
 	}
 
-	public function authorize($user_name, $user_password) {
+	public function authorize($user_email, $user_name, $user_password) {
 		if (! $this->data || ! $this->connection)
 			throw new Exception('Data');
 
 		$this->connection && $this->connection->connect();
 
-		$auth = $this->data->user_match($user_name, $user_password);
+		$auth = $this->data->user_match($user_email, $user_name, $user_password);
 
 		$this->connection && $this->connection->disconnect();
 
 		if ($auth && $auth['user_match'] === true) {
 			$this->setAuthorization(true);
 			$this->setUserData($auth);
+
+			if ($GLOBALS['debug_session']) var_dump($_SESSION);
 
 			return true;
 		} else {
@@ -1073,6 +1256,7 @@ class API implements ApiInterface {
 
 		//-TEMP
 		$GLOBALS['debug_data'] = false;
+		$GLOBALS['debug_session'] = false;
 		//-TEMP
 
 		$this->shortner = new \urls\UrlsShortner;
@@ -1128,11 +1312,11 @@ class API implements ApiInterface {
 		return $path_info;
 	}
 
-	public function authenticate($user_name, $user_password) {
+	public function authenticate($user_email, $user_name, $user_password) {
 		$auth = new Authentication($this->config, $this->data, $this->db);
 
 		try {
-			$auth->authorize($user_name, $user_password);
+			return $auth->authorize($user_email, $user_name, $user_password);
 		} catch (Exception $error) {
 			//var_dump($error);
 
@@ -1157,13 +1341,23 @@ class API implements ApiInterface {
 		if (! isset($this->routes[$endpoint]) || ! isset($this->routes[$endpoint][$method]))
 			return $this->unreachable();
 
-		if (isset($this->routes[$endpoint][$method]['auth'])) {
-			$this->request($this, 'authenticate', $_POST);
+		$need_auth = true;
 
-			exit;
+		if (isset($this->routes[$endpoint][$method]['auth']))
+			$need_auth = $this->routes[$endpoint][$method]['auth'];
+
+		if (isset($this->routes[$endpoint][$method]['access'])) {
+			return $this->request($this, 'authenticate', $_REQUEST);
+			//return $this->request($this, 'authenticate', $_POST);
+		} else if (isset($this->routes[$endpoint][$method]['setup'])) {
+			if ($this->config['Network']['nwsetup']) return $this->install($method, $endpoint);
+			else return $this->notFound();
 		} else if (isset($this->routes[$endpoint][$method]['call'])) {
-			if ($this->isAuthenticated()) $this->allow();
+			if (! $need_auth) $this->allow();
+			else if ($this->isAuthenticated()) $this->allow();
 			else return $this->deny();
+		} else {
+			return $this->unreachable();
 		}
 
 		$call = $this->routes[$endpoint][$method]['call'];
@@ -1172,13 +1366,13 @@ class API implements ApiInterface {
 		if ($call && method_exists($this->data, $call))
 			return $this->request($this->data, $call, $body);
 
-		return $this->unreachable();
+		return $this->notFound();
 	}
 
 	public function response($status, $data) {
-		$output = [ 'status' => $status, 'data' => 0 ];
+		$output = ['status' => $status, 'data' => 0];
 
-		if ($status && empty($data)) $this->no_content();
+		if ($status && empty($data)) $this->noContent();
 		else if (is_bool($data)) $output['data'] = (int) $data;
 		else $output['data'] = $data;
 
@@ -1191,15 +1385,22 @@ class API implements ApiInterface {
 		};
 
 		try {
-			$request_params = array_keys($request);
-
 			$method = new ReflectionMethod($func, $call);
+
+			if (! $method->isPublic())
+				throw new APIException('Bad request');
+
+			$request_params = array_keys($request);
 			$method_params = $method->getParameters();
 
 			array_walk($method_params, $_method_params_transfunc);
 
-			if (count($request_params) < count($method_params))
-				throw $this->raiseParametersMissing($method_params);
+			//-TEMP
+			if (isset($_SERVER['PATH_INFO']) && ! empty($method_params) && empty($request_params))
+			 	throw $this->raiseParametersMissing($method_params);
+			// if (count($request_params) < count($method_params))
+			// 	throw $this->raiseParametersMissing($method_params);
+			//-TEMP
 
 			$params_diff = array_diff($request_params, $method_params);
 
@@ -1211,6 +1412,11 @@ class API implements ApiInterface {
 			if ($request_params !== $request)
 				throw $this->raiseParametersMissing($method_params);
 
+			$method_params = array_fill_keys($method_params, '');
+			$request = array_replace($method_params, $request);
+
+			//url decode
+
 			$data = call_user_func_array([$func, $call], $request);
 		} catch (APIException $error) {
 			$msg = sprintf('Uncaught call. %s', $error->getMessage());
@@ -1220,13 +1426,30 @@ class API implements ApiInterface {
 			$msg = sprintf('Error. %s', $error->getMessage());
 
 			throw new Exception($msg);
-		} catch (Exception $error) {
+		} catch (Error $error) {
 			trigger_error($error);
 		}
 
 		$this->response(true, $data);
 
 		exit;
+	}
+
+	public function install($method, $endpoint) {
+		$call = $this->routes[$endpoint][$method]['call'];
+
+		// try {
+		 	if ($call && method_exists($this->data, $call)) {
+		 		$this->allow();
+
+		 		return $this->request($this->data, $call, $_GET);
+		// 		return $this->request($this->data, $call, $_POST);
+			}
+		// } catch (Exception $error) {
+		// 	trigger_error($error);
+		// }
+
+		return $this->unreachable();
 	}
 
 	public function allow() {
@@ -1236,24 +1459,26 @@ class API implements ApiInterface {
 	}
 
 	public function deny() {
-		header('Status: 403', true, 403);
-
+		header('Status: 401', true, 401);
 		exit;
 	}
 
 	public function busy() {
-		header('Status: 401', true, 401);
-
+		header('Status: 503', true, 503);
 		exit;
 	}
 
 	public function unreachable() {
-		header('Status: 404', true, 404);
-
+		header('Status: 403', true, 403);
 		exit;
 	}
 
-	public function no_content() {
+	public function notFound() {
+		header('Status: 404', true, 404);
+		exit;
+	}
+
+	public function noContent() {
 		//header('Status: 204', true, 204);
 	}
 

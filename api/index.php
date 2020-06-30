@@ -10,7 +10,8 @@ use \urls\API;
 
 const ROUTES = [
 	'/' => [
-		'POST' => [ 'auth' => true ]
+		'GET' => [ 'call' => 'exploiting', 'auth' => false ],
+		'POST' => [ 'access' => true ]
 	],
 	'/store' => [
 		'GET' => [ 'call' => 'store_list' ],
@@ -25,10 +26,16 @@ const ROUTES = [
 		'DELETE' => [ 'call' => 'domain_delete' ]
 	],
 	'/users' => [
-		'GET' => [ 'call' => 'user_get_by_id' ],
+		'GET' => [ 'call' => 'user_list' ],
 		'POST' => [ 'call' => 'user_add' ],
 		'PATCH' => [ 'call' => 'user_update' ],
 		'DELETE' => [ 'call' => 'user_delete' ]
+	],
+	'/setup' => [
+		'GET' => [ 'call' => 'install', 'setup' => true ]
+	],
+	'/activate' => [
+		'GET' => [ 'call' => 'user_activation', 'auth' => false ]
 	]
 ];
 

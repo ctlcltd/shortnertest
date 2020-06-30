@@ -5,17 +5,25 @@ body {
   font-size: 15px;
   line-height: 1.5;
   text-align: center;
-  color: #fcfcfc;
-  background: #505050;
+  color: #eee;
+  /*background: #2f322f;*/
+  background: #2d2f2d;
+}
+hgroup, h1, h2, h3, h4, h5, h6 {
+  clear: both;
 }
 main {
   display: none;
-}
-div {
   max-width: 77%;
   margin: auto;
-  padding: 10rem 5rem;
+  padding: 5rem;
   text-align: left;
+}
+main > div {
+
+}
+div > p {
+  margin: 0 0 .3rem 0;
 }
 table {
   width: 90%;
@@ -32,24 +40,88 @@ form, fieldset {
   border: 0;
 }
 form {
-  margin: 3rem 0 5rem 0;
-  text-align: center;
+  margin: 0 0 4rem 0;
+}
+fieldset, fieldset > div {
+  margin: 0 0 1.5rem 0;
+}
+fieldset > p {
+  margin: 0 0 2rem 0;
+}
+legend {
+  margin: 0 0 2rem 0;
+  font-size: 1.3rem;
+}
+label {
+  display: block;
+  margin: 0 0 .5rem 0;
+  font-size: .7rem;
+  text-transform: uppercase;
+}
+input, textarea, select {
+  display: inline-block;
+  width: 100%;
+  padding: .6rem .5rem;
+  font-size: .9rem;
+  color: #000;
+  background: #cfd7d8;
+  border: 1px solid #505143;
+  opacity: .97;
+  -webkit-appearance: none;
+  box-sizing: border-box;
+}
+input:focus, textarea:focus, select:focus, button:focus {
+  opacity: 1;
+}
+input[placeholder], textarea[placeholder] {
+  padding: 1.1rem .5rem;
+  margin: 0 0 .4rem 0;
+}
+textarea {
+  min-height: 6rem;
+  font-size: .8rem;
+  line-height: 1.6;
 }
 button {
   margin: auto;
-  padding: 1rem 3rem;
-  font-family: Helvetica, Arial, sans-serif;
-  font-size: 19px;
+  padding: .5rem 1.5rem;
+  font-size: 1.1rem;
+  letter-spacing: .03rem;
   color: #fff;
-  background: #ccc;
+  background: #839a97;
   border: 0;
-  border-radius: 1rem;
+  border-radius: .3rem;
+  box-shadow: 0 .1rem .1rem 0 #2d2c22;
   cursor: pointer;
   -webkit-appearance: none;
+}
+button.big {
+  padding: 1rem 3rem;
+  font-size: 1.2rem;
+  letter-spacing: .05rem;
+  border-radius: .5rem;
+  text-transform: uppercase;
+}
+button[type="submit"] {
+  background: #97b922;
+}
+:focus {
+  outline: 0;
+  -webkit-tap-highlight-color: transparent;
 }
 td {
   transition: background ease .1s;
 }
+[hidden] {
+  display: none !important;
+}
+[disabled] {
+  opacity: .89;
+}
+[readonly] {
+  opacity: .93;
+}
+
 [data-attr0] td {
   background: #333;
 }
@@ -63,6 +135,12 @@ td {
   color: #cfcfcf;
   background: #000;
 }
-[disabled] {
-  opacity: .7;
+
+@media (min-width: 768px) {
+  #signin {
+    padding: 10rem 0 0 15rem;
+  }
+  #signin > div {
+    max-width: 44%;
+  }
 }

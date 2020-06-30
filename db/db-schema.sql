@@ -6,7 +6,7 @@ CREATE TABLE "urls_store" (
 	[domain_id] VARCHAR NOT NULL,
 	[event] VARCHAR NOT NULL,
 	[store_time_created] VARCHAR NOT NULL,
-	[store_time_modified] VARCHAR NOT NULL,
+	[store_time_modified] VARCHAR NULL,
 	[store_index] VARCHAR NOT NULL,
 	[store_slug] VARCHAR NOT NULL,
 	[store_url] TEXT NOT NULL
@@ -20,7 +20,7 @@ CREATE TABLE "urls_domains" (
 	[user_id] VARCHAR NOT NULL,
 	[event] VARCHAR NOT NULL,
 	[domain_time_created] VARCHAR NOT NULL,
-	[domain_time_modified] VARCHAR NOT NULL,
+	[domain_time_modified] VARCHAR NULL,
 	[domain_master] VARCHAR NOT NULL,
 	[domain_service] VARCHAR NOT NULL,
 	[domain_enable] SMALLINT NULL
@@ -30,10 +30,10 @@ CREATE INDEX "urls_domains_ids_user" ON "urls_store" ([domain_id], [user_id]);
 
 CREATE TABLE "urls_users" (
 	[user_id] VARCHAR UNIQUE NOT NULL,
-	[user_acl] VARCHAR NOT NULL,
+	[user_acl] VARCHAR NULL,
 	[event] VARCHAR NOT NULL,
 	[user_time_created] VARCHAR NOT NULL,
-	[user_time_modified] VARCHAR NOT NULL,
+	[user_time_modified] VARCHAR NULL,
 	[user_pending] VARCHAR NULL,
 	[user_email] VARCHAR NOT NULL,
 	[user_name] VARCHAR UNIQUE NOT NULL,

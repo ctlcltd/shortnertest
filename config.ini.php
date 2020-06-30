@@ -19,5 +19,6 @@ dbshadow = true
 
 [Network]
 nwsetup = false
+nwapitest = true
 nwuseracl = "store,domains"
 nwuseractionlifetime = 259200
