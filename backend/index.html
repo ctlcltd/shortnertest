@@ -5,20 +5,22 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow,noarchive">
 <link rel="stylesheet" href="style.css">
+<title>URL Shortner - Backend</title>
 </head>
 <body>
-<main id="signin">
+<main id="signin" hidden>
   <div>
     <form id="sign_login" action method="post">
       <legend>Login</legend>
+      <div class="placeholder message"></div>
       <fieldset>
         <div>
           <label for="user_name" hidden>Email address or User name</label>
-          <input type="text" name="user_name" placeholder="Email address or User name">
+          <input type="text" name="user_name" placeholder="Email address or User name" required>
         </div>
         <div>
           <label for="user_name" hidden>Password</label>
-          <input type="password" name="user_password" placeholder="Password">
+          <input type="password" name="user_password" placeholder="Password" required>
         </div>
       </fieldset>
       <fieldset>
@@ -27,68 +29,98 @@
     </form>
   </div>
 </main>
-<main id="list">
-  <table>
-    <thead>
-      <th>ROW0</th>
-      <th>ROW1</th>
-      <th>ROW2</th>
-    </thead>
-    <tbody>
-
-        <tr data-id="{$row[0]}" data-attr0="{$row[]}" data-attr1="{$row[]}">
-          <td><strong>{$row[]}</strong></td>
-          <td>{$row[]}</td>
-          <td>{$row[]}</td>
+<main id="main" hidden>
+  <div>
+    <div class="placeholder nav"></div>
+  </div>
+</main>
+<main class="view-list" hidden>
+  <div>
+    <div class="placeholder nav"></div>
+    <h2 class="placeholder">List</h2>
+    <table class="placeholder view-list_table">
+      <thead>
+        <tr>
+          <th colspan="2">Action</th>
         </tr>
-
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="action action-edit"><a href="?edit=">Edit</a></td>
+          <td class="action action-delete"><a href="?delete=">Delete</a></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 </main>
-<main id="api-test">
-  <form id="api_request" action method="post">
-    <legend>API Test</legend>
-    <fieldset>
-      <p>Request</p>
-      <div>
-        <label for="endpoint">Endpoint</label>
-        <select name="endpoint"></select>
-      </div>
-      <div>
-        <label for="method">Request method</label>
-        <select name="method" style="font-weight: bold"></select>
-      </div>
-      <div>
-        <label for="route">Route</label>
-        <input type="text" name="route" readonly>
-      </div>
-      <div>
-        <label for="body">Request body</label>
-        <textarea name="body"></textarea>
-      </div>
-    </fieldset>
-    <fieldset>
-      <button type="submit" class="big">Test</button>
-    </fieldset>
-  </form>
-  <form id="api_response">
-    <fieldset>
-      <p>Response</p>
-      <div>
-        <label for="response-status">Response Status</label>
-        <input name="response-status"  style="font-weight: bold" readonly>
-      </div>
-      <div>
-        <label for="response-body">Response Body</label>
-        <textarea name="response-body" rows="7" readonly></textarea>
-      </div>
-      <div>
-        <label for="response-headers">Response Headers</label>
-        <textarea name="response-headers" rows="3" readonly></textarea>
-      </div>
-    </fieldset>
-  </form>
+<main class="view-edit" hidden>
+  <div>
+    <div class="placeholder nav"></div>
+    <h2 class="placeholder">Edit</h2>
+    <form class="placeholder view-edit_form" action>
+      <fieldset>
+        <button type="submit">Save</button>
+        <button type="reset">Reset</button>
+      </fieldset>
+    </form>
+  </div>
 </main>
+<main id="api-test" hidden>
+  <div>
+    <div class="placeholder nav"></div>
+    <form id="api_request" action method="post">
+      <legend>API Test</legend>
+      <fieldset>
+        <p>Request</p>
+        <div>
+          <label for="endpoint">Endpoint</label>
+          <select name="endpoint"></select>
+        </div>
+        <div>
+          <label for="method">Request method</label>
+          <select name="method" style="font-weight: bold"></select>
+        </div>
+        <div>
+          <label for="route">Route</label>
+          <input type="text" name="route" readonly>
+        </div>
+        <div>
+          <label for="body">Request body</label>
+          <textarea name="body"></textarea>
+        </div>
+      </fieldset>
+      <fieldset>
+        <button type="submit" class="big">Test</button>
+        <button type="reset" class="tiny">Reset</button>
+      </fieldset>
+    </form>
+    <form id="api_response">
+      <fieldset>
+        <p>Response</p>
+        <div>
+          <label for="response-status">Response Status</label>
+          <input name="response-status" style="font-weight: bold" readonly>
+        </div>
+        <div>
+          <label for="response-body">Response Body</label>
+          <textarea name="response-body" rows="7" readonly></textarea>
+        </div>
+        <div>
+          <label for="response-headers">Response Headers</label>
+          <textarea name="response-headers" rows="3" readonly></textarea>
+        </div>
+      </fieldset>
+    </form>
+  </div>
+</main>
+<nav id="nav" class="nav" hidden>
+  <a href="">Main</a>
+  <a href="store">Store</a>
+  <a href="domains">Domains</a>
+  <a href="users">Users</a>
+  <a href="test">API Test</a>
+  <a href="?logout">Logout</a>
+</nav>
 <script src="script.js"></script>
 </body>
 </html>

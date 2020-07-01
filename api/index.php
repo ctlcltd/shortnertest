@@ -29,7 +29,10 @@ const ROUTES = [
 		'GET' => [ 'call' => 'user_list' ],
 		'POST' => [ 'call' => 'user_add' ],
 		'PATCH' => [ 'call' => 'user_update' ],
-		'DELETE' => [ 'call' => 'user_delete' ]
+		'DELETE' => [ 'call' => 'user_delete' ],
+		//-TEMP
+		'PUT' => [ 'call' => 'user_get_by_id' ]
+		//-TEMP
 	],
 	'/setup' => [
 		'GET' => [ 'call' => 'install', 'setup' => true ]

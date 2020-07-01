@@ -783,7 +783,14 @@ class Data implements DataInterface {
 	public function user_get_by_id($user_id) {
 		$event = $this->call('user', 'get_by_id', false);
 
-		$this->data->fetch('users', ['user_name']);
+		$this->data->fetch('users', [
+			'user_id',
+			'user_acl',
+			'user_pending',
+			'user_email',
+			'user_name',
+			'user_notify'
+		]);
 
 		$this->data->where('user_id', $user_id);
 
@@ -809,7 +816,6 @@ class Data implements DataInterface {
 			'user_pending',
 			'user_email',
 			'user_name',
-			'user_pass',
 			'user_notify'
 		]);
 
@@ -1361,7 +1367,17 @@ class API implements ApiInterface {
 		}
 
 		$call = $this->routes[$endpoint][$method]['call'];
-		$body = $method === 'GET' ? $_GET : $_POST;
+
+		if ($method === 'GET') {
+			$body = $_GET;
+		} else if ($method !== 'POST') {
+			$body = []; 
+			$bodyraw = file_get_contents('php://input');
+
+			parse_str($bodyraw, $body);
+		} else {
+			$body = $_POST;
+		}
 
 		if ($call && method_exists($this->data, $call))
 			return $this->request($this->data, $call, $body);
