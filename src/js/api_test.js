@@ -1,4 +1,4 @@
-/*!
+/*
  * backend/api_test.js
  * 
  * @author Leonardo Laureti <https://loltgt.ga>

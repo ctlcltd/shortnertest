@@ -357,13 +357,7 @@ function api_request(method, endpoint, body) {
     xhr.onerror = function() { reject(xhr); };
   });
 }
-/*!
- * backend/api_test.js
- * 
- * @author Leonardo Laureti <https://loltgt.ga>
- * @version staging
- * @license MIT License
- */
+
 
 function api_test() {
   const view = document.getElementById('api-test');
