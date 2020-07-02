@@ -208,8 +208,11 @@ class API implements ApiInterface {
 			array_walk($method_params, $_method_params_transfunc);
 
 			//-TEMP
-			if (isset($_SERVER['PATH_INFO']) && ! empty($method_params) && empty($request_params))
-			 	throw $this->raiseParametersMissing($method_params);
+			// if (isset($_SERVER['PATH_INFO']) && ! empty($method_params) && empty($request_params))
+			// 	throw $this->raiseParametersMissing($method_params);
+			//-TEMP
+
+			//-TEMP
 			// if (count($request_params) < count($method_params))
 			// 	throw $this->raiseParametersMissing($method_params);
 			//-TEMP

@@ -77,7 +77,7 @@ function view_list(uri, key, value) {
   function render(data) {
     var i = 0;
 
-    let id = '#';
+    let get_id;
     const tr_tpl = tbody.firstElementChild;
 
     for (const idx in data) {
@@ -89,8 +89,9 @@ function view_list(uri, key, value) {
       for (const field in data[idx]) {
         const row = data[idx][field];
 
-        if (field.indexOf('_id') != -1) {
-          id = row.toString();
+        //-TEMP
+        if (! get_id && field.indexOf('_id') != -1) {
+          get_id = '&' + field + '=' + row.toString();
         }
 
         if (i === 0) {
@@ -98,14 +99,18 @@ function view_list(uri, key, value) {
           th.innerText = field;
           thead.firstElementChild.insertBefore(th, thead.firstElementChild.lastElementChild);
         }
+        //-TEMP
 
         const td = document.createElement('td');
         td.innerText = row ? row.toString() : '';
         tr.insertBefore(td, tr_ph);
       }
 
-      action_edit.href += id;
-      action_delete.href += id;
+      //-TEMP
+      action_edit.href += get_id;
+      action_delete.href += get_id;
+      //-TEMP
+
       action_delete.onclick = actionDelete;
 
       tr.setAttribute('data-href', action_edit.href);
@@ -125,7 +130,7 @@ function view_list(uri, key, value) {
       const obj = JSON.parse(xhr.response);
 
       if (! obj.status) {
-        return error();
+        return error(obj.data);
       }
 
       if (obj.data) {
@@ -134,12 +139,12 @@ function view_list(uri, key, value) {
     } catch (err) {
       console.error('view_list()', 'load()', err);
 
-      error();
+      error(null, err);
     }
   }
 
-  function error(xhr) {
-    console.error('view_list()', 'error()', xhr);
+  function error(xhr, err) {
+    console.error('view_list()', 'error()', xhr || '', err || '');
   }
 
   request.then(load).catch(error);
@@ -168,7 +173,7 @@ function view_edit(uri, key, value) {
   const endpoint = '/' + uri;
   //-TEMP
   const method = 'put';
-  const body = 'user_id=' + value;
+  const body = value;
   //-TEMP
   const request = api_request(method, endpoint, body);
 
@@ -176,31 +181,25 @@ function view_edit(uri, key, value) {
   const fieldset_ph = form.firstElementChild;
 
   function render(data) {
-    var i = 0;
-
     const fieldset = document.createElement('fieldset');
 
-    for (const idx in data) {
-      for (const field in data[idx]) {
-        const row = data[idx][field];
+    for (const field in data) {
+      const row = data[field];
 
-        const div = document.createElement('div');
-        const label = document.createElement('label');
-        const input = document.createElement('input');
+      const div = document.createElement('div');
+      const label = document.createElement('label');
+      const input = document.createElement('input');
 
-        label.innerText = field;        
-        input.setAttribute('type', 'text');
-        input.value = row ? row.toString() : '';
+      label.innerText = field;        
+      input.setAttribute('type', 'text');
+      input.value = row ? row.toString() : '';
 
-        div.append(label);
-        div.append(input);
+      div.append(label);
+      div.append(input);
 
-        fieldset.append(div);
+      fieldset.append(div);
 
-        form.insertBefore(fieldset, fieldset_ph);
-      }
-
-      i++;
+      form.insertBefore(fieldset, fieldset_ph);
     }
 
     form.classList.remove('placeholder');
@@ -211,7 +210,7 @@ function view_edit(uri, key, value) {
       const obj = JSON.parse(xhr.response);
 
       if (! obj.status) {
-        return error();
+        return error(obj.data);
       }
 
       if (obj.data) {
@@ -220,12 +219,12 @@ function view_edit(uri, key, value) {
     } catch (err) {
       console.error('view_edit()', 'load()', err);
 
-      error();
+      error(false, err);
     }
   }
 
-  function error(xhr) {
-    console.error('view_edit()', 'error()', xhr);
+  function error(xhr, err) {
+    console.error('view_edit()', 'error()', xhr || '', err || '');
   }
 
   request.then(load).catch(error);
@@ -545,7 +544,7 @@ function route(href, title) {
   const url = href.replace(window.location.protocol + '//' + window.location.host, '');
   const path = url.split('?');
   const uri = path[0].split('/')[2];
-  const qs = path[1] ? path[1].split('=') : '';
+  const qs = path[1] ? path[1].split('&') : '';
   const key = qs[0] ? qs[0] : '';
   const value = qs[1] ? qs[1] : '';
 

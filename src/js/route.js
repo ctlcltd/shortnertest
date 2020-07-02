@@ -20,7 +20,7 @@ function route(href, title) {
   const url = href.replace(window.location.protocol + '//' + window.location.host, '');
   const path = url.split('?');
   const uri = path[0].split('/')[2];
-  const qs = path[1] ? path[1].split('=') : '';
+  const qs = path[1] ? path[1].split('&') : '';
   const key = qs[0] ? qs[0] : '';
   const value = qs[1] ? qs[1] : '';
 

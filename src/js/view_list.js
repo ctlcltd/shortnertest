@@ -54,7 +54,7 @@ function view_list(uri, key, value) {
   function render(data) {
     var i = 0;
 
-    let id = '#';
+    let get_id;
     const tr_tpl = tbody.firstElementChild;
 
     for (const idx in data) {
@@ -66,8 +66,9 @@ function view_list(uri, key, value) {
       for (const field in data[idx]) {
         const row = data[idx][field];
 
-        if (field.indexOf('_id') != -1) {
-          id = row.toString();
+        //-TEMP
+        if (! get_id && field.indexOf('_id') != -1) {
+          get_id = '&' + field + '=' + row.toString();
         }
 
         if (i === 0) {
@@ -75,14 +76,18 @@ function view_list(uri, key, value) {
           th.innerText = field;
           thead.firstElementChild.insertBefore(th, thead.firstElementChild.lastElementChild);
         }
+        //-TEMP
 
         const td = document.createElement('td');
         td.innerText = row ? row.toString() : '';
         tr.insertBefore(td, tr_ph);
       }
 
-      action_edit.href += id;
-      action_delete.href += id;
+      //-TEMP
+      action_edit.href += get_id;
+      action_delete.href += get_id;
+      //-TEMP
+
       action_delete.onclick = actionDelete;
 
       tr.setAttribute('data-href', action_edit.href);
@@ -102,7 +107,7 @@ function view_list(uri, key, value) {
       const obj = JSON.parse(xhr.response);
 
       if (! obj.status) {
-        return error();
+        return error(obj.data);
       }
 
       if (obj.data) {
@@ -111,12 +116,12 @@ function view_list(uri, key, value) {
     } catch (err) {
       console.error('view_list()', 'load()', err);
 
-      error();
+      error(null, err);
     }
   }
 
-  function error(xhr) {
-    console.error('view_list()', 'error()', xhr);
+  function error(xhr, err) {
+    console.error('view_list()', 'error()', xhr || '', err || '');
   }
 
   request.then(load).catch(error);

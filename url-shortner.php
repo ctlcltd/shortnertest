@@ -80,13 +80,19 @@ const ROUTES = [
 		'GET' => [ 'call' => 'store_list' ],
 		'POST' => [ 'call' => 'store_add' ],
 		'PATCH' => [ 'call' => 'store_update' ],
-		'DELETE' => [ 'call' => 'store_delete' ]
+		'DELETE' => [ 'call' => 'store_delete' ],
+		//-TEMP
+		'PUT' => [ 'call' => 'store_get_by_id' ]
+		//-TEMP
 	],
 	'/domains' => [
 		'GET' => [ 'call' => 'domain_list' ],
 		'POST' => [ 'call' => 'domain_add' ],
 		'PATCH' => [ 'call' => 'domain_update' ],
-		'DELETE' => [ 'call' => 'domain_delete' ]
+		'DELETE' => [ 'call' => 'domain_delete' ],
+		//-TEMP
+		'PUT' => [ 'call' => 'domain_get' ]
+		//-TEMP
 	],
 	'/users' => [
 		'GET' => [ 'call' => 'user_list' ],

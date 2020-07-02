@@ -104,7 +104,6 @@ main h2 {
 
 
 table {
-  width: 100%;
   border-collapse: collapse; }
 
 th {
@@ -145,12 +144,9 @@ form {
 fieldset, fieldset > div {
   margin: 0 0 1.5rem 0; }
 
-fieldset > p {
-  margin: 0 0 2rem 0; }
-
-legend {
+fieldset > p, legend {
   margin: 0 0 2rem 0;
-  font-size: 1.3rem; }
+  font-size: 1rem; }
 
 label {
   display: block;
@@ -166,6 +162,7 @@ input, textarea, select {
   color: #000;
   background: #cfd7d8;
   border: 1px solid #414242;
+  border-radius: 0;
   -webkit-appearance: none;
   box-sizing: border-box; }
   input, textarea, select {
@@ -228,6 +225,27 @@ input + input, textarea + input, select + input, button + input, input + textare
     content: '';
     clear: both; }
 
+
+.nav a:last-child {
+  float: right;
+  font-size: 80%;
+  font-weight: bold;
+  text-transform: uppercase; }
+
+.table {
+  display: block;
+  width: 100%;
+  border: 0;
+  overflow-x: scroll;
+  -webkit-overflow-scrolling: touch; }
+  .table > table {
+    width: 100%; }
+
+.action > a {
+  color: #fff;
+  font-size: .7rem;
+  font-weight: bold;
+  text-transform: uppercase; }
 
 #main div > nav  {
   padding: 0; }

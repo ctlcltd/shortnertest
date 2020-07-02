@@ -6,6 +6,30 @@
  * @license MIT License
  */
 
+.nav a:last-child {
+  float: right;
+  font-size: 80%;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.table {
+  display: block;
+  width: 100%;
+  border: 0;
+  overflow-x: scroll;
+  -webkit-overflow-scrolling: touch;
+
+  > table { width: 100%; }
+}
+
+.action > a {
+  color: #fff;
+  font-size: .7rem;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
 #main div > nav {
   padding: 0;
 }

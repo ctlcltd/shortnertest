@@ -26,7 +26,7 @@ function view_edit(uri, key, value) {
   const endpoint = '/' + uri;
   //-TEMP
   const method = 'put';
-  const body = 'user_id=' + value;
+  const body = value;
   //-TEMP
   const request = api_request(method, endpoint, body);
 
@@ -34,31 +34,25 @@ function view_edit(uri, key, value) {
   const fieldset_ph = form.firstElementChild;
 
   function render(data) {
-    var i = 0;
-
     const fieldset = document.createElement('fieldset');
 
-    for (const idx in data) {
-      for (const field in data[idx]) {
-        const row = data[idx][field];
+    for (const field in data) {
+      const row = data[field];
 
-        const div = document.createElement('div');
-        const label = document.createElement('label');
-        const input = document.createElement('input');
+      const div = document.createElement('div');
+      const label = document.createElement('label');
+      const input = document.createElement('input');
 
-        label.innerText = field;        
-        input.setAttribute('type', 'text');
-        input.value = row ? row.toString() : '';
+      label.innerText = field;        
+      input.setAttribute('type', 'text');
+      input.value = row ? row.toString() : '';
 
-        div.append(label);
-        div.append(input);
+      div.append(label);
+      div.append(input);
 
-        fieldset.append(div);
+      fieldset.append(div);
 
-        form.insertBefore(fieldset, fieldset_ph);
-      }
-
-      i++;
+      form.insertBefore(fieldset, fieldset_ph);
     }
 
     form.classList.remove('placeholder');
@@ -69,7 +63,7 @@ function view_edit(uri, key, value) {
       const obj = JSON.parse(xhr.response);
 
       if (! obj.status) {
-        return error();
+        return error(obj.data);
       }
 
       if (obj.data) {
@@ -78,12 +72,12 @@ function view_edit(uri, key, value) {
     } catch (err) {
       console.error('view_edit()', 'load()', err);
 
-      error();
+      error(false, err);
     }
   }
 
-  function error(xhr) {
-    console.error('view_edit()', 'error()', xhr);
+  function error(xhr, err) {
+    console.error('view_edit()', 'error()', xhr || '', err || '');
   }
 
   request.then(load).catch(error);

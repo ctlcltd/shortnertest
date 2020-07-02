@@ -68,19 +68,15 @@ class Urls_Controller extends Controller implements Urls_ControllerInterface {
 	public function store_get_by_id($store_id) {
 		$event = $this->call('store', 'get_by_id', false);
 
-		$user_id = $this->user->id;
+		$this->data->fetch('store', $this->list, true);
 
-		$this->data->fetch('store', $this->list);
-
-		$this->data->where('store_id', $user_id);
+		$this->data->where('store_id', $store_id);
 
 		return $this->data->run();
 	}
 
 	public function store_get_by_slug($store_slug) {
 		$event = $this->call('store', 'get_by_slug', false);
-
-		$user_id = $this->user->id;
 
 		$this->data->fetch('store', $this->list, true);
 
@@ -96,9 +92,9 @@ class Urls_Controller extends Controller implements Urls_ControllerInterface {
 
 		$this->data->fetch('store', $this->list);
 
-		$this->data
-			->where('user_id', $user_id)
-			->where('domain_id', $domain_id);
+		$this->data->where('user_id', $user_id);
+
+		$domain_id && $this->data->where('domain_id', $domain_id);
 
 		return $this->data->run();
 	}
@@ -195,6 +191,8 @@ class Urls_Controller extends Controller implements Urls_ControllerInterface {
 	public function domain_list($user_id) {
 		$event = $this->call('domain', 'list', false);
 
+		$user_id = $this->user->id;
+
 		$this->data->fetch('domains', $this->list);
 
 		$this->data->where('user_id', $user_id);
@@ -242,8 +240,8 @@ class Urls_Controller extends Controller implements Urls_ControllerInterface {
 
 		$this->data->where('domain_id', $domain_id);
 
-		$master || $this->data->set('domain_master', $master);
-		$service || $this->data->set('domain_service', $service);
+		$master && $this->data->set('domain_master', $master);
+		$service && $this->data->set('domain_service', $service);
 
 		$this->data
 			->set('event', $event->getToken())
@@ -362,10 +360,10 @@ class Urls_Controller extends Controller implements Urls_ControllerInterface {
 		if ($user_pass)
 			$user_pass = password_hash($user_password, PASSWORD_DEFAULT);
 
-		$user_acl || $this->data->set('user_acl', $user_acl);
-		$user_email || $this->data->set('user_email', $user_email);
-		$user_name || $this->data->set('user_name', $user_name);
-		$user_pass || $this->data->set('user_pass', $user_pass);
+		$user_acl && $this->data->set('user_acl', $user_acl);
+		$user_email && $this->data->set('user_email', $user_email);
+		$user_name && $this->data->set('user_name', $user_name);
+		$user_pass && $this->data->set('user_pass', $user_pass);
 
 		$this->data
 			->set('event', $event->getToken())

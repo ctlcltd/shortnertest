@@ -17,13 +17,9 @@ form {
 fieldset, fieldset > div {
   margin: 0 0 1.5rem 0;
 }
-fieldset > p {
+fieldset > p, legend {
   margin: 0 0 2rem 0;
-}
-
-legend {
-  margin: 0 0 2rem 0;
-  font-size: 1.3rem;
+  font-size: 1rem;
 }
 
 label {
@@ -41,6 +37,7 @@ input, textarea, select {
   color: #000;
   background: #cfd7d8;
   border: 1px solid #414242;
+  border-radius: 0;
   -webkit-appearance: none;
   box-sizing: border-box;
 
