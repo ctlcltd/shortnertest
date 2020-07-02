@@ -1,4 +1,12 @@
 <?php
+/*!
+ * index.php
+ * 
+ * @author Leonardo Laureti <https://loltgt.ga>
+ * @version staging
+ * @license MIT License
+ */
+
 empty($_SERVER['REQUEST_URI']) && exit(1);
 
 try {

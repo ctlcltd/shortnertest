@@ -1,74 +1,26 @@
 <?php
+/**
+ * api/index.php
+ * 
+ * @author Leonardo Laureti <https://loltgt.ga>
+ * @version staging
+ * @license MIT License
+ */
+
 namespace urls;
 
 require_once __DIR__ . '/../url-shortner.php';
 
-use \urls\Shortner;
-use \urls\Data;
-use \urls\API;
+use \urls\Urls_API;
 
+ini_set('expose_php', 0);
+ini_set('enable_postdata_reading', 1);
+ini_set('post_max_size', '128B');
+	ini_set('file_uploads', 0);
+	ini_set('upload_max_filesize', 0);
+	ini_set('max_file_uploads', 0);
+ini_set('variables_order', 'GPS');
+ini_set('http.request.datashare.cookie', 0);
+ini_set('cgi.fix_pathinfo', 1);
 
-const ROUTES = [
-	'/' => [
-		'GET' => [ 'call' => 'exploiting', 'auth' => false ],
-		'POST' => [ 'access' => true ]
-	],
-	'/store' => [
-		'GET' => [ 'call' => 'store_list' ],
-		'POST' => [ 'call' => 'store_add' ],
-		'PATCH' => [ 'call' => 'store_update' ],
-		'DELETE' => [ 'call' => 'store_delete' ]
-	],
-	'/domains' => [
-		'GET' => [ 'call' => 'domain_list' ],
-		'POST' => [ 'call' => 'domain_add' ],
-		'PATCH' => [ 'call' => 'domain_update' ],
-		'DELETE' => [ 'call' => 'domain_delete' ]
-	],
-	'/users' => [
-		'GET' => [ 'call' => 'user_list' ],
-		'POST' => [ 'call' => 'user_add' ],
-		'PATCH' => [ 'call' => 'user_update' ],
-		'DELETE' => [ 'call' => 'user_delete' ],
-		//-TEMP
-		'PUT' => [ 'call' => 'user_get_by_id' ]
-		//-TEMP
-	],
-	'/setup' => [
-		'GET' => [ 'call' => 'install', 'setup' => true ]
-	],
-	'/activate' => [
-		'GET' => [ 'call' => 'user_activation', 'auth' => false ]
-	]
-];
-
-const CONFIG_SCHEMA = [
-	'Host' => [
-		'htbackenddomain' => Shortner::VALUE_STR,
-		'htssr' => Shortner::VALUE_BOOL,
-		'ht404' => Shortner::VALUE_STR,
-		'ht50x' => Shortner::VALUE_STR
-	],
-	'Backend' => [
-		'bepath' => Shortner::VALUE_STR
-	],
-	'Database' => [
-		'dbdsn' => Shortner::VALUE_STR,
-		'dbuser' => Shortner::VALUE_STR,
-		'dbpass' => Shortner::VALUE_STR,
-		'dbopts' => Shortner::VALUE_ARR,
-		'dbshadow' => Shortner::VALUE_BOOL
-	],
-	'Network' => [
-		'nwsetup' => Shortner::VALUE_BOOL,
-		'nwuseracl' => Shortner::VALUE_STR,
-		'nwuseractionlifetime' => Shortner::VALUE_INT
-	]
-];
-
-class UrlsShortner extends \urls\Shortner {}
-class UrlsDatabase extends \urls\Database {}
-class UrlsData extends \urls\Data {}
-class UrlsAPI extends \urls\API {}
-
-new UrlsAPI;
+new \urls\Urls_API;

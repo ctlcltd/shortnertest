@@ -1,0 +1,45 @@
+/*
+ * backend/custom.scss
+ * 
+ * @author Leonardo Laureti <https://loltgt.ga>
+ * @version staging
+ * @license MIT License
+ */
+
+#main div > nav {
+  padding: 0;
+}
+#main nav {
+  font-size: 1.2rem;
+}
+#main nav a {
+  display: block;
+  margin: 1rem 2rem;
+  padding: 1rem 2rem;
+}
+
+[data-attr0] td {
+  background: #333;
+}
+[data-attr0="0"] td {
+  background: transparent;
+}
+[data-attr0="1"] td {
+  background: #098;
+}
+[data-attr1="1"] td {
+  color: #cfcfcf;
+  background: #000;
+}
+
+@media (min-width: 768px) {
+  #signin {
+    padding: 10rem 0 0 15rem;
+  }
+  #signin > div {
+    max-width: 44%;
+  }
+  #main nav a {
+    max-width: 44%;
+  }
+}

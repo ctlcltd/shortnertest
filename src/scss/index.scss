@@ -1,0 +1,67 @@
+/*!
+ * backend/style.css
+ * 
+ * @author Leonardo Laureti <https://loltgt.ga>
+ * @version staging
+ * @license MIT License
+ */
+
+@import "_skin";
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: $font-family;
+  font-size: $font-size;
+  line-height: $line-height;
+  text-align: center;
+  color: $color;
+  background: $background;
+}
+
+// @mixins
+@mixin clearer {
+  :after,
+  :before {
+    content: '';
+    clear: both;
+  }
+}
+
+@keyframes loading {
+  0% { opacity: .77; }
+  100% { opacity: .89; }
+}
+
+:focus {
+  outline: 0;
+  -webkit-tap-highlight: transparent;
+}
+
+.placeholder {
+  @include clearer();
+  display: block;
+  visibility: hidden;
+}
+
+[hidden] {
+  display: none !important;
+}
+[disabled] {
+  opacity: .89;
+}
+[readonly] {
+  opacity: .93;
+}
+
+[data-loading] {
+  animation: infinite loading 600ms linear alternate;
+}
+
+@import "headings";
+@import "nav";
+@import "main";
+@import "table";
+@import "form";
+@import "message";
+@import "customs";

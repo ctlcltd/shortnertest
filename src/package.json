@@ -1,0 +1,20 @@
+{
+  "name": "url-shortner",
+  "version": "0.0.1",
+  "description": "staging",
+  "scripts": {
+    "watch": "node build.js watch",
+    "watch-js": "node build.js watch js",
+    "watch-scss": "node buildjs watch scss",
+    "build": "node build.js",
+    "build-js": "node build.js js",
+    "build-scss": "node build.js scss"
+  },
+  "author": "Leonardo Laureti",
+  "license": "MIT",
+  "devDependencies": {
+    "clean-css": "^4.2.3",
+    "node-sass": "^4.14.1",
+    "uglify-es": "^3.3.9"
+  }
+}

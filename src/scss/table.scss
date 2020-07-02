@@ -1,0 +1,34 @@
+/*
+ * backend/table.scss
+ * 
+ * @author Leonardo Laureti <https://loltgt.ga>
+ * @version staging
+ * @license MIT License
+ */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+th {
+  background: #202020;
+  text-transform: uppercase;
+
+  & { font-weight: normal; }
+  &:last-of-type { font-weight: bold; }
+}
+th, td {
+  padding: 1rem 1rem;
+  border: 0 solid #363636;
+  border-width: 1px 0;
+  font-size: .8rem;
+}
+td {
+  transition: background ease .1s;
+}
+
+tbody tr {
+  & { background: #242424; }
+  &:hover { background: #232323; }
+  &:focus { background: #191919; }
+}

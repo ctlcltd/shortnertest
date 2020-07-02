@@ -1,0 +1,20 @@
+/*
+ * backend/main.scss
+ * 
+ * @author Leonardo Laureti <https://loltgt.ga>
+ * @version staging
+ * @license MIT License
+ */
+
+main {
+  max-width: 77%;
+  margin: auto;
+  padding: 5rem;
+  text-align: left;
+}
+main div > nav {
+  padding: 1rem 0 2rem 0;
+}
+main h2 {
+  text-transform: uppercase;
+}

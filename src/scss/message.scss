@@ -1,0 +1,16 @@
+/*
+ * backend/message.scss
+ * 
+ * @author Leonardo Laureti <https://loltgt.ga>
+ * @version staging
+ * @license MIT License
+ */
+
+.message, .warning, .error, .info {
+  @include clearer();
+  display: block;
+  min-height: 1.2rem;
+  margin: 0 0 .5rem 0;
+  padding: .5rem 0;
+  font-size: .8rem;
+}

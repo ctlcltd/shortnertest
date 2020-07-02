@@ -1,3 +1,11 @@
+/*!
+ * backend/script.js
+ * 
+ * @author Leonardo Laureti <https://loltgt.ga>
+ * @version staging
+ * @license MIT License
+ */
+
 const bepath = '/backend';
 const beroutes = {
   '' : { '': main, 'login': signin, 'logout': signout },
@@ -9,6 +17,7 @@ const beroutes = {
 let benav;
 const apipath = '/api';
 
+
 function main() {
   const view = document.getElementById('main');
   // const menu = view.querySelector('.nav.placeholder');
@@ -19,46 +28,6 @@ function main() {
   view.removeAttribute('hidden');
 }
 
-function nav(menu) {
-  // if (benav && menu) {
-  //   const nav = benav.cloneNode(true);
-
-  //   menu.replaceWith(benav);
-
-  //   return benav;
-  // } else if (! menu) {
-  //   return benav;
-  // }
-
-  const nav = document.getElementById('nav').cloneNode(true);
-  const nav_items = nav.querySelectorAll('a');
-
-  function click(evt) {
-    evt.preventDefault();
-
-    route(this.href);
-
-    return false;
-  }
-
-  for (const el of nav_items) {
-    el.href = bepath + '/' + el.getAttribute('href');
-    el.onclick = click;
-  }
-
-  nav.removeAttribute('id');
-  nav.removeAttribute('hidden');
-
-  benav = nav;
-
-  if (menu) {
-    const nav = benav.cloneNode(true);
-
-    menu.replaceWith(benav);
-  }
-
-  return benav;
-}
 
 function view_list(uri, key, value) {
   const source = document.querySelector('.view-list');
@@ -178,6 +147,7 @@ function view_list(uri, key, value) {
   view.removeAttribute('hidden');
 }
 
+
 function view_edit(uri, key, value) {
   const source = document.querySelector('.view-edit');
   const clone = source.cloneNode(true);
@@ -263,6 +233,7 @@ function view_edit(uri, key, value) {
   view.removeAttribute('hidden');
 }
 
+
 function signin() {
   const view = document.getElementById('signin');
   const form = document.getElementById('sign_login');
@@ -340,7 +311,7 @@ function signin() {
     form.reset();
 
     if (xhr && ! msg && xhr.status) {
-      msg = 'An error occurred.'
+      msg = 'An error occurred.';
     }
 
     err_log = document.createElement('div');
@@ -359,9 +330,11 @@ function signin() {
   view.removeAttribute('hidden');
 }
 
+
 function signout() {
   return route(bepath + '/?login');
 }
+
 
 function api_request(method, endpoint, body) {
   const xhr = new XMLHttpRequest();
@@ -381,10 +354,17 @@ function api_request(method, endpoint, body) {
   xhr.send(body);
 
   return new Promise(function(resolve, reject) {
-    xhr.onload = function() { resolve(xhr); }
-    xhr.onerror = function() { reject(xhr); }
+    xhr.onload = function() { resolve(xhr); };
+    xhr.onerror = function() { reject(xhr); };
   });
 }
+/*!
+ * backend/api_test.js
+ * 
+ * @author Leonardo Laureti <https://loltgt.ga>
+ * @version staging
+ * @license MIT License
+ */
 
 function api_test() {
   const view = document.getElementById('api-test');
@@ -406,6 +386,8 @@ function api_test() {
 
   function response(xhr) {
     console.log('api_test()', 'response()', xhr);
+
+    response_form.removeAttribute('data-loading');
 
     response_status.value = xhr.status;
     response_body.value = xhr.response;
@@ -454,6 +436,8 @@ function api_test() {
 
     const request = api_request(method, endpoint, body);
 
+    response_form.setAttribute('data-loading', '');
+
     request.then(response).catch(response);
   }
 
@@ -478,7 +462,7 @@ function api_test() {
       }
 
       methodChange();
-    } catch (err) {
+    } catch (err) {
       console.error('api_test()', 'endpointChange()', err);
     }
   }
@@ -491,7 +475,7 @@ function api_test() {
       const method = method_select.value.toUpperCase();
 
       route_input.value = JSON.stringify(routes[endpoint][method]);
-    } catch (err) {
+    } catch (err) {
       console.error('api_test()', 'methodChange()', err);
     }
   }
@@ -503,6 +487,49 @@ function api_test() {
 
   methods_api.then(load).catch(load);
 }
+
+
+function nav(menu) {
+  // if (benav && menu) {
+  //   const nav = benav.cloneNode(true);
+
+  //   menu.replaceWith(benav);
+
+  //   return benav;
+  // } else if (! menu) {
+  //   return benav;
+  // }
+
+  const nav = document.getElementById('nav').cloneNode(true);
+  const nav_items = nav.querySelectorAll('a');
+
+  function click(evt) {
+    evt.preventDefault();
+
+    route(this.href);
+
+    return false;
+  }
+
+  for (const el of nav_items) {
+    el.href = bepath + '/' + el.getAttribute('href');
+    el.onclick = click;
+  }
+
+  nav.removeAttribute('id');
+  nav.removeAttribute('hidden');
+
+  benav = nav;
+
+  if (menu) {
+    const nav = benav.cloneNode(true);
+
+    menu.replaceWith(benav);
+  }
+
+  return benav;
+}
+
 
 function route(href, title) {
   const views = document.querySelectorAll('main');
@@ -548,6 +575,7 @@ function route(href, title) {
 
   beroutes[uri][key].call(this, uri, key, value);
 }
+
 
 function init() {
   var tc_value = '1; ';
