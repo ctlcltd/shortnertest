@@ -7,16 +7,11 @@
  * @license MIT License
  */
 
-namespace urls;
+namespace framework;
 
 use \stdClass;
 
 
-/**
- * Interface for logger class
- *
- * @interface
- */
 interface LoggerInterface {
 	public function getToken();
 	public function getTime();
@@ -26,7 +21,7 @@ class Logger implements LoggerInterface {
 	private $callee, $event, $time;
 	public $epoch, $hash;
 
-	public function __construct($callec, $callea, $write = true) {
+	public function __construct(string $callec, string $callea, bool $write = true) {
 		$time = $_SERVER['REQUEST_TIME'];
 
 		$this->callee = "{$callec}_{$callea}";

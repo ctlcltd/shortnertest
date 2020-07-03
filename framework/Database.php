@@ -7,18 +7,13 @@
  * @license MIT License
  */
 
-namespace urls;
+namespace framework;
 
 use \Exception;
 use \PDO;
 use \PDOException;
 
 
-/**
- * Interface for database class
- *
- * @interface
- */
 interface DatabaseInterface {
 	public function connect();
 	public function disconnect();
@@ -26,27 +21,24 @@ interface DatabaseInterface {
 	public function commit();
 	public function rollback();
 	public function end();
-	public function shadow($collection, $shadow, $event, $id_keys, $keys_shadow);
+	public function shadow(string $collection, string $shadow, object $event, array $id_keys, array $keys_shadow);
 	public function prepare();
-	public function process($command, $collection, $allowed);
+	public function process(string $command, string $collection, array $clauses);
 	public function run();
-	public function select($keys, $single, $distinct);
-	public function set($param, $value, $type);
-	public function where($param, $value, $type, $condition);
-	public function limit($limit_offset, $limit);
-	public function fetch($collection);
-	public function add($collection);
-	public function update($collection);
-	public function remove($collection);
+	public function select($keys, bool $single, bool $distinct);
+	public function set(string $param, $value, int $type);
+	public function where(string $param, $value, int $type, string $condition);
+	public function sort(string $param, string $sort_by);
+	public function group(string $param, $group_by);
+	public function limit(int $limit_offset, int $limit);
+	public function fetch(string $collection);
+	public function add(string $collection);
+	public function update(string $collection);
+	public function remove(string $collection);
 }
 
 class DatabaseException extends \Exception {}
 
-/**
- * Class for data handling
- * 
- * @class
- */
 class Database implements DatabaseInterface {
 	private $config, $dbh, $sth;
 
@@ -69,17 +61,17 @@ class Database implements DatabaseInterface {
 
 	protected $statement, $command, $collection, $clauses;
 
-	public function __construct($config_db) {
+	public function __construct(array $config_db) {
 		$this->config = $config_db;
 	}
 
 	public function connect() {
 		try {
 			$this->dbh = new PDO(
-				$this->config['dbdsn'],
-				$this->config['dbuser'],
-				$this->config['dbpass'],
-				$this->config['dbopts']
+				$this->config['dsn'],
+				$this->config['username'],
+				$this->config['password'],
+				$this->config['options']
 			);
 
 			$this->dbh->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_WARNING);
@@ -114,7 +106,7 @@ class Database implements DatabaseInterface {
 		$this->sth->closeCursor();
 	}
 
-	public function shadow($collection, $shadow, $event, $id_keys, $keys_shadow) {
+	public function shadow(string $collection, string $shadow, object $event, array $id_keys, array $keys_shadow) {
 		$token = $event->getToken();
 		$time = $event->getTime();
 
@@ -135,7 +127,7 @@ class Database implements DatabaseInterface {
 		return $this->run();
 	}
 
-	public function process($command, $collection, $clauses) {
+	public function process(string $command, string $collection, array $clauses) {
 		if (! in_array($command, ['fetch', 'add', 'update', 'remove']))
 			throw new DatabaseException('Unknown SQL command');
 
@@ -147,7 +139,7 @@ class Database implements DatabaseInterface {
 
 		$this->command = $command;
 		//-TEMP
-		$this->collection = \urls\COLLECTION_TEMPLATE[$collection];
+		$this->collection = \urls\COLLECTIONS_TEMPLATE[$collection];
 		// $this->collection = $collection;
 		//-TEMP
 		$this->clauses = array_merge($sql_clauses, $clauses);
@@ -295,13 +287,13 @@ class Database implements DatabaseInterface {
 		return $results;
 	}
 
-	public function select($keys, $single, $distinct) {
+	public function select($keys, bool $single = false, bool $distinct = false) {
 		if (! $this->clauses['select'])
 			throw new Exception('Select clause not allowed');
 
 		$this->statement['select'] = [
 			'single' => $single,
-			'distinct' => $distinct ? true : false,
+			'distinct' => $distinct,
 			'count' => false,
 			'keys' => is_array($keys) ? $keys : NULL
 		];
@@ -318,7 +310,7 @@ class Database implements DatabaseInterface {
 		return $this;
 	}
 
-	public function set($param, $value, $type = 2) {
+	public function set(string $param, $value, int $type = 2) {
 		if (! $this->clauses['set'])
 			throw new Exception('Set clause not allowed');
 
@@ -330,7 +322,7 @@ class Database implements DatabaseInterface {
 		return $this;
 	}
 
-	public function where($param, $value, $type = 2, $condition = '') {
+	public function where(string $param, $value, int $type = 2, string $condition = '') {
 		if (! $this->clauses['where'])
 			throw new Exception('Where clause not allowed');
 
@@ -346,7 +338,7 @@ class Database implements DatabaseInterface {
 		return $this;
 	}
 
-	public function sort($param, $sort_by) {
+	public function sort(string $param, string $sort_by = 'desc') {
 		if (! $this->clauses['sort'])
 			throw new Exception('Sort clause not allowed');
 
@@ -355,7 +347,7 @@ class Database implements DatabaseInterface {
 		return $this;
 	}
 
-	public function group($param, $group_by) {
+	public function group(string $param, $group_by) {
 		if (! $this->clauses['group'])
 			throw new Exception('Group clause not allowed');
 
@@ -364,7 +356,7 @@ class Database implements DatabaseInterface {
 		return $this;
 	}
 
-	public function limit($limit_offset, $limit = 0) {
+	public function limit(int $limit_offset, int $limit = 0) {
 		if (! $this->clauses['limit'])
 			throw new Exception('Limit clause not allowed');
 
@@ -378,7 +370,7 @@ class Database implements DatabaseInterface {
 		return $this;
 	}
 
-	public function fetch($collection, $keys = NULL, $single = false, $distinct = false) {
+	public function fetch(string $collection, $keys = NULL, bool $single = false, bool $distinct = false) {
 		$this->process('fetch', $collection, [
 			'select',
 			'count',
@@ -391,15 +383,15 @@ class Database implements DatabaseInterface {
 		$this->select($keys, $single, $distinct);
 	}
 
-	public function add($collection) {
+	public function add(string $collection) {
 		$this->process('add', $collection, ['set', 'values']);
 	}
 
-	public function update($collection) {
+	public function update(string $collection) {
 		$this->process('update', $collection, ['set', 'where']);
 	}
 
-	public function remove($collection) {
+	public function remove(string $collection) {
 		$this->process('remove', $collection, ['set', 'where']);
 	}
 }

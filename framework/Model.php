@@ -7,14 +7,11 @@
  * @license MIT License
  */
 
-namespace urls;
+namespace framework;
 
 
 interface ModelInterface {
 }
 
 abstract class Model implements ModelInterface {
-	public function __construct() {
-		
-	}
 }

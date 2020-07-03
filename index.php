@@ -19,14 +19,14 @@ try {
 
 try {
 	//-TEMP
-	$config['Database']['dbdsn'] = str_replace("../", "./", $config['Database']['dbdsn']);
+	$config['Database']['dsn'] = str_replace("../", "./", $config['Database']['dsn']);
 	//-TEMP
 
 	$dbh = new PDO(
-		$config['Database']['dbdsn'],
-		$config['Database']['dbuser'],
-		$config['Database']['dbpass'],
-		$config['Database']['dbopts']
+		$config['Database']['dsn'],
+		$config['Database']['user'],
+		$config['Database']['pass'],
+		$config['Database']['options']
 	);
 
 	$dbh->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_WARNING);

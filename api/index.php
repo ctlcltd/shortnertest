@@ -11,7 +11,7 @@ namespace urls;
 
 require_once __DIR__ . '/../url-shortner.php';
 
-use \urls\Urls_API;
+use \urls\API;
 
 ini_set('expose_php', 0);
 ini_set('enable_postdata_reading', 1);
@@ -23,4 +23,4 @@ ini_set('variables_order', 'GPS');
 ini_set('http.request.datashare.cookie', 0);
 ini_set('cgi.fix_pathinfo', 1);
 
-new \urls\Urls_API;
+new \urls\API;

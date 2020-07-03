@@ -7,62 +7,65 @@
  * @license MIT License
  */
 
-namespace urls;
+namespace framework;
 
+use \stdClass;
 use \Exception;
 use \ErrorException;
 use \Error;
 use \ReflectionMethod;
-use \stdClass;
 
-use \urls\Urls_Config;
-use \urls\Urls_Database;
-use \urls\Urls_Controller;
-use \urls\Urls_Shortner;
-use \urls\Urls_Authentication;
+use \framework\Controller;
+use \framework\Authentication;
 
 
-/**
- * Interface for api class
- *
- * @interface
- */
 interface ApiInterface {
-
+	public function error(int $errno, string $errstr, string $errfile, int $errline);
+	public function exception(object $exception);
+	public function getPathInfo($path_info);
+	public function authenticate(array $request);
+	public function isAuthenticated();
+	public function router(string $method, string $endpoint);
+	public function response(bool $status, $data);
+	public function request(object $func, string $call, array $request);
+	public function install(string $method, string $endpoint);
+	public function allow();
+	public function deny();
+	public function busy();
+	public function unreachable();
+	public function notFound();
+	public function noContent();
+	public function raiseParametersMissing(array $method_params);
+	public function raiseParametersWrong(array $params_diff);
 }
 
 class APIException extends Exception {}
 
-/**
- * @class
- */
 class API implements ApiInterface {
-	private $config, $db, $controller, $routes, $shortner;
+	public array $config;
+	public object $dbo;
+	public object $cth;
+	public array $routes;
+
 
 	public function __construct() {
-		if (! defined('\urls\ROUTES'))
-			throw new Error('Undef constant ROUTES');
-
 		set_error_handler([$this, 'error']);
 		set_exception_handler([$this, 'exception']);
 
-		//-TEMP
-		$GLOBALS['debug_data'] = false;
-		$GLOBALS['debug_session'] = false;
-		//-TEMP
+		$this->_temp_debug();
 
-		$this->config = new \urls\Urls_Config();
-		$this->config = $this->config->get();
 
-		$this->db = new \urls\Urls_Database(
-			$this->config['Database'],
-			\urls\COLLECTION_TEMPLATE,
-			\urls\COLLECTION_SCHEMA
-		);
-		$this->controller = new \urls\Urls_Controller($this->config, $this->db);
-		$this->routes = \urls\ROUTES;
+		$this->config = \framework\CONFIG;
 
-		$this->shortner = new \urls\Urls_Shortner;
+		$this->Authentication = '\framework\Authentication';
+		$this->Controller = '\framework\Controller';
+
+		$this->dbo = new stdClass;
+
+		$this->cth = new $this->Controller($this->config, $this->dbo);
+		$this->ath = new $this->Authentication($this->config);
+
+		$this->routes = \framework\ROUTES;
 
 		//same origin
 
@@ -74,13 +77,18 @@ class API implements ApiInterface {
 	}
 
 	public function __destruct() {
-		$this->db->disconnect();
-
 		restore_error_handler();
 		restore_exception_handler();
 	}
 
-	public function error($errno, $errstr, $errfile, $errline) {
+	//-TEMP
+	public function _temp_debug() {
+		$GLOBALS['debug_data'] = false;
+		$GLOBALS['debug_session'] = false;
+	}
+	//-TEMP
+
+	public function error(int $errno, string $errstr, string $errfile, int $errline) {
 		$exception = new ErrorException($errstr, 0, $errno, $errfile, $errline);
 
 		error_log($exception);
@@ -90,7 +98,7 @@ class API implements ApiInterface {
 		return false;
 	}
 
-	public function exception($exception) {
+	public function exception(object $exception) {
 		$msg = $exception->getMessage();
 
 		header('Status: 500', true, 500);
@@ -112,34 +120,43 @@ class API implements ApiInterface {
 		return $path_info;
 	}
 
-	public function authenticate($user_email, $user_name, $user_password) {
-		$auth = new \urls\Urls_Authentication($this->config, $this->controller, $this->db);
+	public function authenticate(array $body) {
+		$this->ath->transaction();
 
 		try {
-			return $auth->authorize($user_email, $user_name, $user_password);
+			$auth = new stdClass;
+			$auth->flag = empty($body) ? false : true;
+
+			$status = $response = $this->ath->authorize($auth);
 		} catch (Exception $error) {
-			// var_dump($error);
 			error_log($error);
 
-			throw new APIException('authenticate'/*, $error*/);
+			$status = $response = false;
+
+			throw $error;
 		}
+
+		$this->ath->commit();
+
+		return $this->response($status, $response);
 	}
 
 	public function isAuthenticated() {
-		$auth = new \urls\Authentication($this->config);
+		$this->ath->transaction();
 
 		try {
-			if ($auth->isAuthorized()) return true;
+			if ($this->ath->isAuthorized()) return true;
 			else return false;
 		} catch (Exception $error) {
-			// var_dump($error);
 			error_log($error);
 
-			throw new APIException('isAuthenticated'/*, $error*/);
+			throw $error;
 		}
+
+		$this->ath->commit();
 	}
 
-	public function router($method, $endpoint) {
+	public function router(string $method, string $endpoint) {
 		if (! isset($this->routes[$endpoint]) || ! isset($this->routes[$endpoint][$method]))
 			return $this->unreachable();
 
@@ -149,8 +166,7 @@ class API implements ApiInterface {
 			$need_auth = $this->routes[$endpoint][$method]['auth'];
 
 		if (isset($this->routes[$endpoint][$method]['access'])) {
-			return $this->request($this, 'authenticate', $_REQUEST);
-			//return $this->request($this, 'authenticate', $_POST);
+			return $this->authenticate($_POST);
 		} else if (isset($this->routes[$endpoint][$method]['setup'])) {
 			if ($this->config['Network']['nwsetup']) return $this->install($method, $endpoint);
 			else return $this->notFound();
@@ -175,23 +191,23 @@ class API implements ApiInterface {
 			$body = $_POST;
 		}
 
-		if ($call && method_exists($this->controller, $call))
-			return $this->request($this->controller, $call, $body);
+		if ($call && method_exists($this->cth, $call))
+			return $this->request($this->cth, $call, $body);
 
 		return $this->notFound();
 	}
 
-	public function response($status, $data) {
+	public function response(bool $status, $response) {
 		$output = ['status' => $status, 'data' => 0];
 
-		if ($status && empty($data)) $this->noContent();
-		else if (is_bool($data)) $output['data'] = (int) $data;
-		else $output['data'] = $data;
+		if ($status && empty($response)) $this->noContent();
+		else if (is_bool($response)) $output['data'] = (int) $response;
+		else $output['data'] = $response;
 
 		echo json_encode($output);
 	}
 
-	public function request($func, $call, $request) {
+	public function request(object $func, string $call, array $request) {
 		$_method_params_transfunc = function(&$param, $i) {
 			$param = $param->name;
 		};
@@ -250,15 +266,15 @@ class API implements ApiInterface {
 		exit;
 	}
 
-	public function install($method, $endpoint) {
+	public function install(string $method, string $endpoint) {
 		$call = $this->routes[$endpoint][$method]['call'];
 
 		// try {
-		 	if ($call && method_exists($this->controller, $call)) {
+		 	if ($call && method_exists($this->cth, $call)) {
 		 		$this->allow();
 
-		 		return $this->request($this->controller, $call, $_GET);
-		// 		return $this->request($this->controller, $call, $_POST);
+		 		return $this->request($this->cth, $call, $_GET);
+		// 		return $this->request($this->cth, $call, $_POST);
 			}
 		// } catch (Exception $error) {
 		// 	trigger_error($error);
@@ -268,7 +284,7 @@ class API implements ApiInterface {
 	}
 
 	public function allow() {
-		$this->db->connect();
+		$this->dbo->connect();
 
 		header('Status: 200', true, 200);
 	}
@@ -297,13 +313,13 @@ class API implements ApiInterface {
 		//header('Status: 204', true, 204);
 	}
 
-	public function raiseParametersMissing($method_params) {
+	public function raiseParametersMissing(array $method_params) {
 		$msg = sprintf('Missing parameters, expected: %s', implode(' or ', $method_params));
 
 		return new APIException($msg);
 	}
 
-	public function raiseParametersWrong($params_diff) {
+	public function raiseParametersWrong(array $params_diff) {
 		$props = [];
 
 		foreach ($params_diff as $param) {

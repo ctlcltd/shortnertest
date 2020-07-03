@@ -7,46 +7,31 @@
  * @license MIT License
  */
 
-namespace urls;
+namespace framework;
 
 use \Exception;
-use \stdClass;
 
 
-/**
- * Interface for authentication class
- *
- * @interface
- */
 interface AuthenticationInterface {
 	public function transaction();
 	public function commit();
 	public function flush();
-	public function get($key);
-	public function set($key, $value);
-	public function authorize($user_email, $user_name, $user_password);
+	public function get(string $key);
+	public function set(string $key, $value);
+	public function authorize(object $auth);
 	public function unauthorize();
 	public function isAuthorized();
-	public function setAuthorization($authorized);
-	public function setUserData($data);
-	public function getUserData();
+	public function setAuthorization(object $auth);
 }
 
 class Authentication implements AuthenticationInterface {
-	private $config, $data, $connection, $prefix;
+	public array $config;
+	public string $prefix;
 
-	public function __construct($config, $data = NULL, $connection = NULL) {
+	public function __construct(array $config) {
 		$this->config = $config;
-		$this->data = $data;
-		$this->connection = $connection;
 
 		$this->prefix = __NAMESPACE__;
-
-		$this->transaction();
-	}
-
-	public function __destruct() {
-		$this->commit();
 	}
 
 	public function transaction() {
@@ -79,30 +64,20 @@ class Authentication implements AuthenticationInterface {
 		session_start();
 	}
 
-	public function get($key) {
+	public function get(string $key) {
 		if (isset($_SESSION["{$this->prefix}-{$key}"]))
 			return $_SESSION["{$this->prefix}-{$key}"];
 
 		return NULL;
 	}
 
-	public function set($key, $value) {
+	public function set(string $key, $value) {
 		$_SESSION["{$this->prefix}-{$key}"] = $value;
 	}
 
-	public function authorize($user_email, $user_name, $user_password) {
-		if (! $this->data || ! $this->connection)
-			throw new Exception('Data');
-
-		$this->connection && $this->connection->connect();
-
-		$auth = $this->data->user_match($user_email, $user_name, $user_password);
-
-		$this->connection && $this->connection->disconnect();
-
-		if ($auth && $auth['user_match'] === true) {
+	public function authorize(object $auth) {
+		if ($auth->flag) {
 			$this->setAuthorization(true);
-			$this->setUserData($auth);
 
 			if ($GLOBALS['debug_session']) var_dump($_SESSION);
 
@@ -125,21 +100,5 @@ class Authentication implements AuthenticationInterface {
 	public function setAuthorization($authorized) {
 		if ($authorized) $this->set('authorized', true);
 		else $this->flush();
-	}
-
-	public function setUserData($data) {
-		$this->set('-data-id', $data['user_id']);
-		$this->set('-data-acl', $data['user_acl']);
-		$this->set('-data-name', $data['user_name']);
-	}
-
-	public function getUserData() {
-		$data = new stdClass;
-
-		$data->id = $this->get('-data-id');
-		$data->acl = $this->get('-data-acl');
-		$data->name = $this->get('-data-name');
-
-		return $data;
 	}
 }

@@ -1,24 +1,21 @@
 <?php
 [Host]
-htbackenddomain = "third.domain.ltd"
-htssr = true
-ht404 = ""
-ht50x = ""
-
-[Backend]
+ssr = true
+error_404 = ""
+error_50x = ""
 ; abs path
-bepath = "./backend"
+backend_path = "./backend"
 
 [Database]
 ; abs path
-dbdsn = "sqlite:../db/db.sqlite"
-dbuser = ""
-dbpass = ""
-dbopts[empty] =
-dbshadow = true
+dsn = "sqlite:../db/db.sqlite"
+username = ""
+password = ""
+options[empty] =
+shadow = true
 
 [Network]
-nwsetup = false
-nwapitest = true
-nwuseracl = "store,domains"
-nwuseractionlifetime = 259200
+setup = false
+api_test = true
+user_acl = "store,domains"
+user_action_lifetime = 259200
