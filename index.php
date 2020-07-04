@@ -24,9 +24,9 @@ try {
 
 	$dbh = new PDO(
 		$config['Database']['dsn'],
-		$config['Database']['user'],
-		$config['Database']['pass'],
-		$config['Database']['options']
+		$config['Database']['username'],
+		$config['Database']['password'],
+		$config['Database']['options'] === [''] ? NULL : $config['Database']['options']
 	);
 
 	$dbh->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_WARNING);
@@ -34,9 +34,8 @@ try {
 	E_NOTICE && die(sprintf('PDO Exception: %s', $error->getMessage()));
 
 	exit(1);
-} finally {
-	$url = $_SERVER['REQUEST_URI'];
-
-
-	//header("location: {$href}", true, 301);
 }
+
+$url = $_SERVER['REQUEST_URI'];
+
+//header("location: {$href}", true, 301);

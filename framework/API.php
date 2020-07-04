@@ -55,7 +55,9 @@ class API implements ApiInterface {
 		$this->_temp_debug();
 
 
-		$this->config = \framework\CONFIG;
+		$config = new Config(\urls\CONFIG_TEMPLATE);
+		$config->fromArray(\framework\CONFIG);
+		$this->config = $config->get();
 
 		$this->Authentication = '\framework\Authentication';
 		$this->Controller = '\framework\Controller';

@@ -1,6 +1,6 @@
 <?php
 /**
- * framework/Model.php
+ * framework/View.php
  * 
  * @author Leonardo Laureti <https://loltgt.ga>
  * @version staging
@@ -10,9 +10,9 @@
 namespace framework;
 
 
-interface ModelInterface {
+interface ViewInterface {
 }
 
-abstract class Model implements ModelInterface {
+abstract class View implements ViewInterface {
 
 }

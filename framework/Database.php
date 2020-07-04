@@ -139,7 +139,7 @@ class Database implements DatabaseInterface {
 
 		$this->command = $command;
 		//-TEMP
-		$this->collection = \urls\COLLECTIONS_TEMPLATE[$collection];
+		$this->collection = \urls\COLLECTIONS_TEMPLATE[$collection]['table'];
 		// $this->collection = $collection;
 		//-TEMP
 		$this->clauses = array_merge($sql_clauses, $clauses);

@@ -32,18 +32,13 @@ class API extends \framework\API implements APIInterface {
 
 
 		$config = new Config(\urls\CONFIG_TEMPLATE);
-		$config->parse_ini_file(__DIR__ . '/../config.ini.php');
-
+		$config->fromIniFile(__DIR__ . '/../config.ini.php');
 		$this->config = $config->get();
 
 		$this->Authentication = '\urls\Authentication';
 		$this->Controller = '\urls\Controller';
 
-		$this->dbo = new Database(
-			$this->config['Database'],
-			\urls\COLLECTIONS_TEMPLATE,
-			\urls\COLLECTIONS_FIELD_TEMPLATE
-		);
+		$this->dbo = new Database($this->config['Database']);
 
 		$this->cth = new $this->Controller($this->config, $this->dbo);
 		$this->ath = new $this->Authentication($this->config, $this->dbo, $this->cth);

@@ -11,7 +11,7 @@ backend_path = "./backend"
 dsn = "sqlite:../db/db.sqlite"
 username = ""
 password = ""
-options[empty] =
+options[] =
 shadow = true
 
 [Network]

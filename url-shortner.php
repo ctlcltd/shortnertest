@@ -14,10 +14,12 @@ require_once __DIR__ . '/framework/constants.php';
 require_once __DIR__ . '/framework/Config.php';
 require_once __DIR__ . '/framework/Database.php';
 require_once __DIR__ . '/framework/Authentication.php';
+require_once __DIR__ . '/framework/Schema.php';
 require_once __DIR__ . '/framework/Controller.php';
 require_once __DIR__ . '/framework/Logger.php';
 require_once __DIR__ . '/framework/API.php';
 
+require_once __DIR__ . '/urls/Collection.php';
 require_once __DIR__ . '/urls/Controller.php';
 require_once __DIR__ . '/urls/Authentication.php';
 require_once __DIR__ . '/urls/API.php';
@@ -67,171 +69,180 @@ const ROUTES = [
 
 
 const COLLECTIONS_TEMPLATE = [
-	'store' => 'urls_store',
-	'domains' => 'urls_domains',
-	'users' => 'urls_users',
-	'shadows' => 'urls_shadows'
-];
-
-const COLLECTIONS_FIELD_TEMPLATE = [
 	'store' => [
-		'store_id' => [
-			'type' => \framework\VALUE_STR,
-			'readonly' => true
-		],
-		'user_id' => [
-			'type' => \framework\VALUE_STR,
-			'acl' => '*',
-			'readonly' => true
-		],
-		'domain_id' => [
-			'type' => \framework\VALUE_STR,
-			'readonly' => true
-		],
-		'event' => [
-			'type' => \framework\VALUE_ARR,
-			'acl' => '*',
-			'public' => false
-		],
-		'store_time_created' => [
-			'type' => \framework\VALUE_STR,
-			'muta' => 'datetime',
-			'acl' => '*',
-			'readonly' => true
-		],
-		'store_time_modified' => [
-			'type' => \framework\VALUE_STR,
-			'muta' => 'datetime',
-			'acl' => '*',
-			'readonly' => true
-		],
-		'store_index' => [
-			'type' => \framework\VALUE_STR,
-			'acl' => '*',
-			'readonly' => true
-		],
-		'store_slug' => [
-			'type' => \framework\VALUE_STR,
-			'readonly' => true
-		],
-		'store_url' => [
-			'type' => \framework\VALUE_STR,
-			'muta' => 'url'
+		'table' => 'urls_store',
+		'acl' => 'store',
+		'fields' => [
+			'store_id' => [
+				'type' => \framework\VALUE_STR,
+				'readonly' => true
+			],
+			'user_id' => [
+				'type' => \framework\VALUE_STR,
+				'acl' => '*',
+				'readonly' => true
+			],
+			'domain_id' => [
+				'type' => \framework\VALUE_STR,
+				'readonly' => true
+			],
+			'event' => [
+				'type' => \framework\VALUE_ARR,
+				'acl' => '*',
+				'public' => false
+			],
+			'store_time_created' => [
+				'type' => \framework\VALUE_STR,
+				'muta' => 'datetime',
+				'acl' => '*',
+				'readonly' => true
+			],
+			'store_time_modified' => [
+				'type' => \framework\VALUE_STR,
+				'muta' => 'datetime',
+				'acl' => '*',
+				'readonly' => true
+			],
+			'store_index' => [
+				'type' => \framework\VALUE_STR,
+				'acl' => '*',
+				'readonly' => true
+			],
+			'store_slug' => [
+				'type' => \framework\VALUE_STR,
+				'readonly' => true
+			],
+			'store_url' => [
+				'type' => \framework\VALUE_STR,
+				'muta' => 'url'
+			]
 		]
 	],
 	'domains' => [
-		'domain_id' => [
-			'type' => \framework\VALUE_STR,
-			'readonly' => true
-		],
-		'user_id' => [
-			'type' => \framework\VALUE_STR,
-			'acl' => '*',
-			'readonly' => true
-		],
-		'event' => [
-			'type' => \framework\VALUE_ARR,
-			'acl' => '*',
-			'public' => false
-		],
-		'domain_time_created' => [
-			'type' => \framework\VALUE_STR,
-			'muta' => 'datetime',
-			'acl' => '*',
-			'readonly' => true
-		],
-		'domain_time_modified' => [
-			'type' => \framework\VALUE_STR,
-			'muta' => 'datetime',
-			'acl' => '*',
-			'readonly' => true
-		],
-		'domain_master' => [
-			'type' => \framework\VALUE_STR,
-			'muta' => 'url',
-			'transform' => 'hostname'
-		],
-		'domain_service' => [
-			'type' => \framework\VALUE_STR,
-			'muta' => 'url',
-			'transform' => 'hostname'
-		],
-		'domain_enable' => [
-			'type' => \framework\VALUE_BOOL,
-			'muta' => 'check',
-			'acl' => '*'
+		'table' => 'urls_domains',
+		'acl' => 'domains',
+		'fields' => [
+			'domain_id' => [
+				'type' => \framework\VALUE_STR,
+				'readonly' => true
+			],
+			'user_id' => [
+				'type' => \framework\VALUE_STR,
+				'acl' => '*',
+				'readonly' => true
+			],
+			'event' => [
+				'type' => \framework\VALUE_ARR,
+				'acl' => '*',
+				'public' => false
+			],
+			'domain_time_created' => [
+				'type' => \framework\VALUE_STR,
+				'muta' => 'datetime',
+				'acl' => '*',
+				'readonly' => true
+			],
+			'domain_time_modified' => [
+				'type' => \framework\VALUE_STR,
+				'muta' => 'datetime',
+				'acl' => '*',
+				'readonly' => true
+			],
+			'domain_master' => [
+				'type' => \framework\VALUE_STR,
+				'muta' => 'url',
+				'transform' => 'hostname'
+			],
+			'domain_service' => [
+				'type' => \framework\VALUE_STR,
+				'muta' => 'url',
+				'transform' => 'hostname'
+			],
+			'domain_enable' => [
+				'type' => \framework\VALUE_BOOL,
+				'muta' => 'check',
+				'acl' => '*'
+			]
 		]
 	],
 	'users' => [
-		'user_id' => [
-			'type' => \framework\VALUE_STR,
-			'acl' => '*',
-			'readonly' => true
-		],
-		'user_acl' => [
-			'type' => \framework\VALUE_ARR,
-			'muta' => 'radio',
-			'transform' => 'user_acl'
-		],
-		'event' => [
-			'type' => \framework\VALUE_ARR,
-			'acl' => '*',
-			'public' => false
-		],
-		'user_time_created' => [
-			'type' => \framework\VALUE_STR,
-			'muta' => 'datetime',
-			'acl' => '*',
-			'readonly' => true
-		],
-		'user_time_modified' => [
-			'type' => \framework\VALUE_STR,
-			'muta' => 'datetime',
-			'acl' => '*',
-			'readonly' => true
-		],
-		'user_pending' => [
-			'type' => \framework\VALUE_ARR, // \framework\VALUE_NULL || \framework\VALUE_ARR
-			'acl' => '*',
-			'readonly' => true
-		],
-		'user_email' => [
-			'type' => \framework\VALUE_STR,
-			'muta' => 'email',
-			'acl' => '*'
-		],
-		'user_name' => [
-			'type' => \framework\VALUE_STR,
-			'transform' => 'user_name',
-			'acl' => '*'
-		],
-		'user_pass' => [
-			'type' => \framework\VALUE_STR,
-			'acl' => '*',
-			'public' => false
-		],
-		'user_notify' => [
-			'type' => \framework\VALUE_INT,
-			'muta' => 'radio',
-			'transform' => 'user_notify',
-			'acl' => '*'
+		'table' => 'urls_users',
+		'acl' => 'users',
+		'fields' => [
+			'user_id' => [
+				'type' => \framework\VALUE_STR,
+				'acl' => '*',
+				'readonly' => true
+			],
+			'user_acl' => [
+				'type' => \framework\VALUE_ARR,
+				'muta' => 'radio',
+				'transform' => 'user_acl'
+			],
+			'event' => [
+				'type' => \framework\VALUE_ARR,
+				'acl' => '*',
+				'public' => false
+			],
+			'user_time_created' => [
+				'type' => \framework\VALUE_STR,
+				'muta' => 'datetime',
+				'acl' => '*',
+				'readonly' => true
+			],
+			'user_time_modified' => [
+				'type' => \framework\VALUE_STR,
+				'muta' => 'datetime',
+				'acl' => '*',
+				'readonly' => true
+			],
+			'user_pending' => [
+				'type' => \framework\VALUE_ARR, // \framework\VALUE_NULL || \framework\VALUE_ARR
+				'acl' => '*',
+				'readonly' => true
+			],
+			'user_email' => [
+				'type' => \framework\VALUE_STR,
+				'muta' => 'email',
+				'acl' => '*'
+			],
+			'user_name' => [
+				'type' => \framework\VALUE_STR,
+				'transform' => 'user_name',
+				'acl' => '*'
+			],
+			'user_pass' => [
+				'type' => \framework\VALUE_STR,
+				'acl' => '*',
+				'public' => false
+			],
+			'user_notify' => [
+				'type' => \framework\VALUE_INT,
+				'muta' => 'radio',
+				'transform' => 'user_notify',
+				'acl' => '*'
+			]
 		]
 	],
 	'shadows' => [
-		'event' => [
-			'type' => \framework\VALUE_ARR,
-			'acl' => '*',
-			'public' => false
-		],
-		'shadow_time' => [
-			'type' => \framework\VALUE_STR,
-			'acl' => '*',
-			'public' => false
-		],
-		'shadow_blob' => [
-			'type' => \framework\VALUE_ARR,
-			'acl' => '*',
-			'public' => false
+		'table' => 'urls_shadows',
+		'public' => false,
+		'fields' => [
+			'event' => [
+				'type' => \framework\VALUE_ARR,
+				'acl' => '*',
+				'public' => false
+			],
+			'shadow_time' => [
+				'type' => \framework\VALUE_STR,
+				'acl' => '*',
+				'public' => false
+			],
+			'shadow_blob' => [
+				'type' => \framework\VALUE_ARR,
+				'acl' => '*',
+				'public' => false
+			]
 		]
 	]
 ];
@@ -256,3 +267,23 @@ const CONFIG_TEMPLATE = [
 		'user_action_lifetime' => \framework\VALUE_INT
 	]
 ];
+
+
+
+
+
+
+
+
+
+
+
+// new \framework\ConfigSchema(\urls\CONFIG_TEMPLATE, 'Config');
+// new \urls\CollectionSchema(\urls\COLLECTIONS_TEMPLATE['store'], 'Store');
+
+
+
+
+
+
+
