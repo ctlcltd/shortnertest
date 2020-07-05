@@ -1,5 +1,5 @@
 <?php
-/*!
+/**
  * index.php
  * 
  * @author Leonardo Laureti <https://loltgt.ga>

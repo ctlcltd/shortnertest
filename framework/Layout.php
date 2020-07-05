@@ -10,9 +10,9 @@
 namespace framework;
 
 
-interface ModelInterface {
+interface LayoutInterface {
 }
 
-abstract class Model implements ModelInterface {
+abstract class Layout implements LayoutInterface {
 
 }

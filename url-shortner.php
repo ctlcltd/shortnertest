@@ -9,21 +9,24 @@
 
 namespace urls;
 
+use \framework\Config_SchemaField_Schema;
+
 
 require_once __DIR__ . '/framework/constants.php';
 require_once __DIR__ . '/framework/Config.php';
 require_once __DIR__ . '/framework/Database.php';
 require_once __DIR__ . '/framework/Authentication.php';
 require_once __DIR__ . '/framework/Schema.php';
-require_once __DIR__ . '/framework/Controller.php';
+require_once __DIR__ . '/framework/App.php';
 require_once __DIR__ . '/framework/Logger.php';
 require_once __DIR__ . '/framework/API.php';
 
 require_once __DIR__ . '/urls/Collection.php';
-require_once __DIR__ . '/urls/Controller.php';
+require_once __DIR__ . '/urls/App.php';
 require_once __DIR__ . '/urls/Authentication.php';
 require_once __DIR__ . '/urls/API.php';
 require_once __DIR__ . '/urls/Dummy.php';
+require_once __DIR__ . '/urls/Virtual.php';
 require_once __DIR__ . '/urls/Shortner.php';
 
 
@@ -247,7 +250,8 @@ const COLLECTIONS_TEMPLATE = [
 	]
 ];
 
-const CONFIG_TEMPLATE = [
+
+/*const CONFIG_TEMPLATE = [
 	'Host' => [
 		'ssr' => \framework\VALUE_BOOL,
 		'error_404' => \framework\VALUE_STR,
@@ -266,7 +270,20 @@ const CONFIG_TEMPLATE = [
 		'user_acl' => \framework\VALUE_STR,
 		'user_action_lifetime' => \framework\VALUE_INT
 	]
-];
+];*/
+
+
+class ConfigSchema extends \framework\ConfigSchema {
+	public function __construct() {
+		parent::__construct();
+
+		$this->schema->Network['user_acl'] = (new Config_SchemaField_Schema)
+			->set('type', \framework\VALUE_STR, $this->schema);
+
+		$this->schema->Network['user_action_lifetime'] = (new Config_SchemaField_Schema)
+			->set('type', \framework\VALUE_INT, $this->schema);
+	}
+}
 
 
 

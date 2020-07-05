@@ -1,6 +1,6 @@
 <?php
 /**
- * urls/Controller.php
+ * urls/App.php
  * 
  * @author Leonardo Laureti <https://loltgt.ga>
  * @version staging
@@ -9,16 +9,16 @@
 
 namespace urls;
 
-use \Exception;
 use \stdClass;
+use \Exception;
 
-use \framework\ControllerException;
+use \framework\AppException;
 
 use \urls\Dummy;
 use \urls\Shortner;
 
 
-interface ControllerInterface extends \framework\ControllerInterface {
+interface AppInterface extends \framework\AppInterface {
 	public function store_add($domain_id, $url);
 	public function store_delete($store_id);
 	public function store_list($domain_id);
@@ -34,7 +34,7 @@ interface ControllerInterface extends \framework\ControllerInterface {
 	public function user_match($user_email, $user_name, $user_password);
 }
 
-class Controller extends \framework\Controller implements \urls\ControllerInterface {
+class App extends \framework\App implements \urls\AppInterface {
 	public object $data;
 	protected object $dummyObject;
 	protected $list;
@@ -86,7 +86,7 @@ class Controller extends \framework\Controller implements \urls\ControllerInterf
 		$event = $this->dummyObject->call('store', 'add');
 
 		if (! filter_var($url, FILTER_VALIDATE_URL))
-			throw new ControllerException('Not a valid URL');
+			throw new AppException('Not a valid URL');
 
 		//same domain ?
 
@@ -117,7 +117,7 @@ class Controller extends \framework\Controller implements \urls\ControllerInterf
 		$event = $this->dummyObject->call('store', 'update');
 
 		if (! filter_var($url, FILTER_VALIDATE_URL))
-			throw new ControllerException('Not a valid URL');
+			throw new AppException('Not a valid URL');
 
 		//same domain ?
 
@@ -187,10 +187,10 @@ class Controller extends \framework\Controller implements \urls\ControllerInterf
 		$event = $this->dummyObject->call('domain', 'add');
 
 		if (! filter_var($master, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME))
-			throw new ControllerException('Not a valid master domain');
+			throw new AppException('Not a valid master domain');
 
 		if (! filter_var($service, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME))
-			throw new ControllerException('Not a valid service domain');
+			throw new AppException('Not a valid service domain');
 
 		$this->data->add('domains');
 
@@ -212,10 +212,10 @@ class Controller extends \framework\Controller implements \urls\ControllerInterf
 		$event = $this->dummyObject->call('domain', 'update');
 
 		if ($master && ! filter_var($master, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME))
-			throw new ControllerException('Not a valid master domain');
+			throw new AppException('Not a valid master domain');
 
 		if ($service && ! filter_var($service, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME))
-			throw new ControllerException('Not a valid service domain');
+			throw new AppException('Not a valid service domain');
 
 		$this->dummyObject->shadow($event, 'domains', ['domain_id' => $domain_id]);
 
@@ -277,7 +277,7 @@ class Controller extends \framework\Controller implements \urls\ControllerInterf
 		$event = $this->dummyObject->call('user', 'add');
 
 		if (! filter_var($user_email, FILTER_VALIDATE_EMAIL))
-			throw new ControllerException('Not a valid e-mail address');
+			throw new AppException('Not a valid e-mail address');
 
 		$user_email = filter_var($user_email, FILTER_SANITIZE_EMAIL);
 
@@ -285,7 +285,7 @@ class Controller extends \framework\Controller implements \urls\ControllerInterf
 		$user_name = trim($user_name);
 
 		if ($this->dummyObject->user_get_by_name($user_name))
-			throw new ControllerException('User name already exists');
+			throw new AppException('User name already exists');
 
 		$user_acl = $user_acl ? $user_acl : $this->config["Network"]["user_acl"];
 
@@ -321,7 +321,7 @@ class Controller extends \framework\Controller implements \urls\ControllerInterf
 
 		if ($user_email) {
 			if (! filter_var($user_email, FILTER_VALIDATE_EMAIL))
-				throw new ControllerException('Not a valid e-mail address');
+				throw new AppException('Not a valid e-mail address');
 
 			$user_email = filter_var($user_email, FILTER_SANITIZE_EMAIL);
 		}
@@ -331,7 +331,7 @@ class Controller extends \framework\Controller implements \urls\ControllerInterf
 			$user_name = trim($user_name);
 
 			if ($this->dummyObject->user_get_by_name($user_name))
-				throw new ControllerException('User name already exists');
+				throw new AppException('User name already exists');
 		}
 
 		$this->dummyObject->shadow($event, 'users', ['user_id' => $user_id]);
@@ -374,7 +374,7 @@ class Controller extends \framework\Controller implements \urls\ControllerInterf
 		$event = $this->dummyObject->call('user', 'activation', true, false);
 
 		if (! filter_var($email, FILTER_VALIDATE_EMAIL))
-			throw new ControllerException('Not a valid e-mail address');
+			throw new AppException('Not a valid e-mail address');
 
 		//email privacy another public ID
 		//validate & sanitize
@@ -389,7 +389,7 @@ class Controller extends \framework\Controller implements \urls\ControllerInterf
 		$row = $this->data->run();
 
 		if (empty($row))
-			throw new ControllerException('Unknown user');
+			throw new AppException('Unknown user');
 
 		$user_id = $row['user_id'];
 		$user_created_epoch = strtotime($row['user_time_created']);
@@ -399,11 +399,11 @@ class Controller extends \framework\Controller implements \urls\ControllerInterf
 		$user_action_lifetime = ($user_created_epoch + $action_lifetime);
 
 		if (! $user_pending)
-			throw new ControllerException('User already activated');
+			throw new AppException('User already activated');
 		else if ($event->epoch > $user_action_lifetime)
-			throw new ControllerException('User activation expired');
+			throw new AppException('User activation expired');
 		else if ($user_pending->digest !== $token)
-			throw new ControllerException('Bad request');
+			throw new AppException('Bad request');
 
 		$this->dummyObject->shadow($event, 'users', ['user_id' => $user_id]);
 
@@ -444,7 +444,7 @@ class Controller extends \framework\Controller implements \urls\ControllerInterf
 		$count = $this->data->run();
 
 		if (! empty($count))
-			throw new ControllerException('Already installed');
+			throw new AppException('Already installed');
 
 		$user_acl = '*';
 		$user_notify = true;

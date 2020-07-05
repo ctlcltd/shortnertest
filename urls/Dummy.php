@@ -32,10 +32,10 @@ class Dummy implements DummyInterface {
 	private bool $enable_shadow;
 	protected bool $need_preauth;
 
-	public function __construct(array $config, object $database, object $controller) {
+	public function __construct(array $config, object $database, object $app) {
 		$this->config = $config;
-		$this->cth = $controller;
-		$this->ath = new Authentication($config, $database, $controller);
+		$this->cth = $app;
+		$this->ath = new Authentication($config, $database, $app);
 		$this->enable_shadow = $this->config['Database']['shadow'];
 		$this->need_preauth = true;
 

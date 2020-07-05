@@ -14,11 +14,12 @@ use \stdClass;
 use \framework\APIInterface;
 use \framework\APIException;
 use \framework\Config;
-use \framework\Database;
 
+use \urls\ConfigSchema;
 use \urls\Shortner;
 use \urls\Authentication;
-use \urls\Controller;
+use \urls\App;
+use \urls\Virtual;
 
 
 class API extends \framework\API implements APIInterface {
@@ -30,18 +31,17 @@ class API extends \framework\API implements APIInterface {
 
 		$this->_temp_debug();
 
-
-		$config = new Config(\urls\CONFIG_TEMPLATE);
+		$config = new Config(new ConfigSchema);
 		$config->fromIniFile(__DIR__ . '/../config.ini.php');
 		$this->config = $config->get();
 
 		$this->Authentication = '\urls\Authentication';
-		$this->Controller = '\urls\Controller';
+		$this->App = '\urls\App';
 
-		$this->dbo = new Database($this->config['Database']);
+		$this->dbo = new Virtual($this->config['Database']);
 
-		$this->cth = new $this->Controller($this->config, $this->dbo);
-		$this->ath = new $this->Authentication($this->config, $this->dbo, $this->cth);
+		$this->app = new $this->App($this->config, $this->dbo);
+		$this->ath = new $this->Authentication($this->config, $this->dbo, $this->app);
 
 		$this->routes = \urls\ROUTES;
 		$this->shortner = new Shortner;

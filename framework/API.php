@@ -10,12 +10,12 @@
 namespace framework;
 
 use \stdClass;
+use \ReflectionMethod;
 use \Exception;
 use \ErrorException;
 use \Error;
-use \ReflectionMethod;
 
-use \framework\Controller;
+use \framework\App;
 use \framework\Authentication;
 
 
@@ -44,7 +44,7 @@ class APIException extends Exception {}
 class API implements ApiInterface {
 	public array $config;
 	public object $dbo;
-	public object $cth;
+	public object $app;
 	public array $routes;
 
 
@@ -55,16 +55,19 @@ class API implements ApiInterface {
 		$this->_temp_debug();
 
 
-		$config = new Config(\urls\CONFIG_TEMPLATE);
+		$config_schema = new \framework\ConfigSchema();
+		$config_schema->fromArray(\urls\CONFIG_TEMPLATE, 'Config');
+
+		$config = new Config($config_schema);
 		$config->fromArray(\framework\CONFIG);
 		$this->config = $config->get();
 
 		$this->Authentication = '\framework\Authentication';
-		$this->Controller = '\framework\Controller';
+		$this->App = '\framework\App';
 
 		$this->dbo = new stdClass;
 
-		$this->cth = new $this->Controller($this->config, $this->dbo);
+		$this->app = new $this->App($this->config, $this->dbo);
 		$this->ath = new $this->Authentication($this->config);
 
 		$this->routes = \framework\ROUTES;
@@ -193,8 +196,8 @@ class API implements ApiInterface {
 			$body = $_POST;
 		}
 
-		if ($call && method_exists($this->cth, $call))
-			return $this->request($this->cth, $call, $body);
+		if ($call && method_exists($this->app, $call))
+			return $this->request($this->app, $call, $body);
 
 		return $this->notFound();
 	}
@@ -255,7 +258,7 @@ class API implements ApiInterface {
 			$msg = sprintf('Uncaught call. %s', $error->getMessage());
 
 			throw new Exception($msg);
-		} catch (ControllerException $error) {
+		} catch (AppException $error) {
 			$msg = sprintf('Error. %s', $error->getMessage());
 
 			throw new Exception($msg);
@@ -272,11 +275,11 @@ class API implements ApiInterface {
 		$call = $this->routes[$endpoint][$method]['call'];
 
 		// try {
-		 	if ($call && method_exists($this->cth, $call)) {
+		 	if ($call && method_exists($this->app, $call)) {
 		 		$this->allow();
 
-		 		return $this->request($this->cth, $call, $_GET);
-		// 		return $this->request($this->cth, $call, $_POST);
+		 		return $this->request($this->app, $call, $_GET);
+		// 		return $this->request($this->app, $call, $_POST);
 			}
 		// } catch (Exception $error) {
 		// 	trigger_error($error);

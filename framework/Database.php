@@ -9,9 +9,9 @@
 
 namespace framework;
 
-use \Exception;
 use \PDO;
-use \PDOException;
+use \PDODatabaseException;
+use \Exception;
 
 
 interface DatabaseInterface {
@@ -39,7 +39,7 @@ interface DatabaseInterface {
 
 class DatabaseException extends \Exception {}
 
-class Database implements DatabaseInterface {
+class DatabaseSQL implements DatabaseInterface {
 	private $config, $dbh, $sth;
 
 	private const SQL_TEMPLATES = [
@@ -57,6 +57,12 @@ class Database implements DatabaseInterface {
 		'group',
 		'sort',
 		'limit'
+	];
+	private const PDO_TRANSLATE = [
+		\framework\VALUE_NULL => PDO::PARAM_NULL,
+		\framework\VALUE_INT => PDO::PARAM_INT,
+		\framework\VALUE_STR => PDO::PARAM_STR,
+		\framework\VALUE_BOOL => PDO::PARAM_BOOL
 	];
 
 	protected $statement, $command, $collection, $clauses;
@@ -138,10 +144,7 @@ class Database implements DatabaseInterface {
 		$clauses = array_fill_keys($clauses, true);
 
 		$this->command = $command;
-		//-TEMP
-		$this->collection = \urls\COLLECTIONS_TEMPLATE[$collection]['table'];
-		// $this->collection = $collection;
-		//-TEMP
+		$this->collection = $collection;
 		$this->clauses = array_merge($sql_clauses, $clauses);
 		$this->statement = [];
 	}
@@ -252,12 +255,12 @@ class Database implements DatabaseInterface {
 		$this->sth = $this->dbh->prepare($sql);
 
 		foreach ($values as $param => $set) {
-			if ($set['type'] === 6) {
+			if ($set['type'] === \framework\VALUE_ARR) {
 				$set['value'] = json_encode($set['value']);
-				$set['type'] = 2;
+				$set['type'] = \framework\VALUE_STR;
 			}
 
-			$this->sth->bindValue(":{$param}", $set['value'], $set['type']);
+			$this->sth->bindValue(":{$param}", $set['value'], self::PDO_TRANSLATE[$set['type']]);
 		}
 
 		if ($GLOBALS['debug_data']) var_dump($this->sth->debugDumpParams());
@@ -310,7 +313,7 @@ class Database implements DatabaseInterface {
 		return $this;
 	}
 
-	public function set(string $param, $value, int $type = 2) {
+	public function set(string $param, $value, int $type = \framework\VALUE_STR) {
 		if (! $this->clauses['set'])
 			throw new Exception('Set clause not allowed');
 
@@ -322,7 +325,7 @@ class Database implements DatabaseInterface {
 		return $this;
 	}
 
-	public function where(string $param, $value, int $type = 2, string $condition = '') {
+	public function where(string $param, $value, int $type = \framework\VALUE_STR, string $condition = '') {
 		if (! $this->clauses['where'])
 			throw new Exception('Where clause not allowed');
 

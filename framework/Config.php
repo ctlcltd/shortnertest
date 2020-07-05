@@ -9,8 +9,8 @@
 
 namespace framework;
 
-use \Exception;
 use \stdClass;
+use \Exception;
 
 
 interface ConfigInterface {
@@ -25,12 +25,12 @@ interface ConfigInterface {
 }
 
 class Config implements ConfigInterface {
-	private array $schema;
+	private object $schema;
 	private bool $has_sections;
 	private string $from;
 	protected array $config;
 
-	public function __construct(array $schema, bool $has_sections = true) {
+	public function __construct(object $schema, bool $has_sections = true) {
 		$this->schema = $schema;
 		$this->has_sections = $has_sections;
 	}
@@ -149,18 +149,18 @@ class Config implements ConfigInterface {
 	}
 
 	private function validateFixDeep(array $config) {
-		foreach ($this->schema as $section => $values) {
+		foreach ($this->schema->schema as $section => $values) {
 			if (! \array_key_exists($section, $config))
 				throw new Exception(sprintf('Undefined schema section: %s', $section));
 
 			if (! is_array($values))
 				throw new Exception('Value is not of type array');
 
-			foreach ($values as $key => $type) {
-				if (! \array_key_exists($key, $this->schema[$section]))
+			foreach ($values as $key => $value) {
+				if (! \array_key_exists($key, $this->schema->schema->{$section}))
 					throw new Exception(sprintf('Undefined schema key: %s', $key));
 
-				if (gettype($config[$section][$key]) !== $this->type($type)) {
+				if (gettype($config[$section][$key]) !== $this->type($value->type)) {
 					if ($this->from === 'INI' && $config[$section][$key] === 'array(empty)')
 						$config[$section][$key] = array();
 					else
@@ -173,11 +173,11 @@ class Config implements ConfigInterface {
 	}
 
 	private function validateFixPlain(array $config) {
-		foreach ($this->schema as $key => $type) {
+		foreach ($this->schema->schema as $key => $type) {
 			if (! \array_key_exists($key, $this->schema))
 				throw new Exception(sprintf('Undefined schema key: %s', $key));
 
-			if (gettype($config[$key]) !== $this->type($type)) {
+			if (gettype($config[$key]) !== $this->type($value->type)) {
 				if ($this->from === 'INI' && $config[$key] === 'array(empty)')
 						$config[$key] = array();
 				else

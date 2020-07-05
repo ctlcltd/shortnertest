@@ -9,41 +9,38 @@
 
 namespace urls;
 
-use \Exception;
 use \stdClass;
+use \Exception;
 
 
 interface AuthenticationInterface extends \framework\AuthenticationInterface {
 	public function authorize(object $auth);
-	public function setUserData(array $cth);
+	public function setUserData(array $app);
 	public function getUserData();
 }
 
 class Authentication extends \framework\Authentication implements \urls\AuthenticationInterface {
 	protected object $dbo;
-	protected object $cth;
+	protected object $app;
 
-	public function __construct(array $config, object $database, object $controller) {
+	public function __construct(array $config, object $database, object $app) {
 		$this->config = $config;
 		$this->dbo = $database;
-		$this->cth = $controller;
+		$this->app = $app;
 
 		$this->prefix = __NAMESPACE__;
 	}
 
 	public function authorize(object $auth) {
-		if (! $this->cth || ! $this->dbo)
-			throw new Exception('Data');
-
 		$this->dbo && $this->dbo->connect();
 
-		$auth = $this->cth->user_match($auth->email, $auth->name, $auth->password);
+		$row = $this->app->user_match($auth->email, $auth->name, $auth->password);
 
 		$this->dbo && $this->dbo->disconnect();
 
-		if ($auth && $auth['user_match'] === true) {
+		if ($row && $row['user_match'] === true) {
 			$this->setAuthorization(true);
-			$this->setUserData($auth);
+			$this->setUserData($row);
 
 			if ($GLOBALS['debug_session']) var_dump($_SESSION);
 
@@ -55,19 +52,19 @@ class Authentication extends \framework\Authentication implements \urls\Authenti
 		return false;
 	}
 
-	public function setUserData(array $cth) {
-		$this->set('-cth-id', $cth['user_id']);
-		$this->set('-cth-acl', $cth['user_acl']);
-		$this->set('-cth-name', $cth['user_name']);
+	public function setUserData(array $row) {
+		$this->set('-user-id', $row['user_id']);
+		$this->set('-user-acl', $row['user_acl']);
+		$this->set('-user-name', $row['user_name']);
 	}
 
 	public function getUserData() {
-		$cth = new stdClass;
+		$user = new stdClass;
 
-		$cth->id = $this->get('-cth-id');
-		$cth->acl = $this->get('-cth-acl');
-		$cth->name = $this->get('-cth-name');
+		$user->id = $this->get('-user-id');
+		$user->acl = $this->get('-user-acl');
+		$user->name = $this->get('-user-name');
 
-		return $cth;
+		return $user;
 	}
 }

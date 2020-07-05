@@ -1,6 +1,6 @@
 <?php
 /**
- * framework/Controller.php
+ * framework/App.php
  * 
  * @author Leonardo Laureti <https://loltgt.ga>
  * @version staging
@@ -12,14 +12,14 @@ namespace framework;
 use \Exception;
 
 
-class ControllerException extends Exception {}
+class AppException extends Exception {}
 
-interface ControllerInterface {
+interface AppInterface {
 	public function install();
 	public function exploiting();
 }
 
-class Controller implements ControllerInterface {
+class App implements AppInterface {
 	public array $config;
 	public array $routes;
 
@@ -32,12 +32,12 @@ class Controller implements ControllerInterface {
 		$this->call('', 'install', false, true);
 
 		if (! $this->config['Network']['setup'])
-			throw new ControllerException('Bad request');
+			throw new AppException('Bad request');
 	}
 
 	public function exploiting() {
 		if (! $this->config['Network']['api_test'])
-			throw new ControllerException('Bad request');
+			throw new AppException('Bad request');
 
 		return $this->routes;
 	}

@@ -23,12 +23,16 @@ class CollectionFieldSchemaField extends SchemaField {
 	public string $transform;
 
 	public function label($value, $schema) {
-		if (! isset($this->public) && ! isset($this->label)) {
+		if (! isset($this->label) && ! isset($this->public)) {
 			$_replace_transfunc = function($matches) {
 				return strtoupper($matches[0]);
 			};
 
-			$this->label = str_replace('_', ' ', $schema->name);
+			$this->label = str_replace('_', ' ', $schema->field_name);
+
+			// if (stripos($this->label, 'id') === false)
+			// 	$this->label = substr($this->label, (stripos($this->label, $schema->name) + strlen($schema->name) + 1));
+
 			$this->label = preg_replace_callback('/\b[\w]{2,3}\b|\b\w/', $_replace_transfunc, $this->label);
 		}
 	}
@@ -43,7 +47,7 @@ class CollectionSchemaField extends SchemaField {
 	public array $fields;
 
 	public function label($value, $schema) {
-		$this->label = $schema->name;
+		return $this->label = $schema->name;
 	}
 }
 
@@ -59,6 +63,6 @@ class CollectionSchema extends Schema {
 
 		$this->schema->fields = $template['fields'];
 
-		var_dump($this);
+		// var_dump($this);
 	}
 }

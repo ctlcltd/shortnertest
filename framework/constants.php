@@ -42,16 +42,3 @@ const ROUTES = [
 		'GET' => [ 'call' => 'sample' ]
 	]
 ];
-
-
-const CONFIG_TEMPLATE = [
-	'Host' => [
-		'ssr' => \framework\VALUE_BOOL,
-		'error_404' => \framework\VALUE_STR,
-		'error_50x' => \framework\VALUE_STR,
-		'backend_path' => \framework\VALUE_STR
-	],
-	'Network' => [
-		'setup' => \framework\VALUE_BOOL
-	]
-];
