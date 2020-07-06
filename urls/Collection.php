@@ -13,7 +13,20 @@ use \framework\Schema;
 use \framework\SchemaField;
 
 
-class CollectionFieldSchemaField extends SchemaField {
+class Collection_SchemaField_Schema extends SchemaField {
+	public string $label;
+	public string $source;
+	public string $acl;
+	public bool $public;
+	public bool $readonly;
+	public array $fields;
+
+	public function label($value, $items) {
+		return $this->label = $items->name;
+	}
+}
+
+class Collection_SchemaField_Field extends SchemaField {
 	public string $label;
 	public int $type;
 	public string $acl;
@@ -38,31 +51,30 @@ class CollectionFieldSchemaField extends SchemaField {
 	}
 }
 
-class CollectionSchemaField extends SchemaField {
-	public string $label;
-	public string $table;
-	public string $acl;
-	public bool $public;
-	public bool $readonly;
-	public array $fields;
-
-	public function label($value, $schema) {
-		return $this->label = $schema->name;
-	}
-}
-
 class CollectionSchema extends Schema {
-	public function __construct(array $template, string $name) {
-		$this->name = $name;
-		$this->field = '\urls\CollectionSchemaField';
-		$this->schema = new $this->field($this, $name, $template);
+	public string $name = 'CollectionSchema';
+	public string $schema = '\urls\Collection_SchemaField_Schema';
+	public string $field = '\urls\Collection_SchemaField_Field';
 
-		$this->field = '\urls\CollectionFieldSchemaField';
-
-		array_walk($template['fields'], [$this, 'recurse']);
-
-		$this->schema->fields = $template['fields'];
-
-		// var_dump($this);
+	public function __construct() {
+		$this->items = new $this->schema;
+		$this->items->fields = [];
+		$this->items->fields[] = new $this->field;
 	}
 }
+
+abstract class Collection {
+	public string $label;
+	public string $source;
+	public string $acl;
+	protected object $schema;
+
+	public function __construct() {
+		$this->schema = new CollectionSchema;
+
+		foreach ($this->schema->items as $key => $item) {
+			if ($item && isset($this->{$key})) $this->schema->items->{$key} = $this->{$key};
+		}
+	}
+}
+

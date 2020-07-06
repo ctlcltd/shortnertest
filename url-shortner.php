@@ -10,6 +10,10 @@
 namespace urls;
 
 use \framework\Config_SchemaField_Schema;
+use \framework\creator\CreatorSchemaField;
+
+use \urls\Collection_SchemaField_Schema;
+use \urls\Collection_SchemaField_Field;
 
 
 require_once __DIR__ . '/framework/constants.php';
@@ -71,9 +75,22 @@ const ROUTES = [
 ];
 
 
+
+class StoreCollection extends Collection {
+	public string $label = 'Store';
+	public string $source = 'urls_store';
+	public string $acl = 'store';
+
+	public function __construct() {
+		parent::__construct();
+
+		// var_dump($this);
+	}
+}
+
 const COLLECTIONS_TEMPLATE = [
 	'store' => [
-		'table' => 'urls_store',
+		'source' => 'urls_store',
 		'acl' => 'store',
 		'fields' => [
 			'store_id' => [
@@ -122,7 +139,7 @@ const COLLECTIONS_TEMPLATE = [
 		]
 	],
 	'domains' => [
-		'table' => 'urls_domains',
+		'source' => 'urls_domains',
 		'acl' => 'domains',
 		'fields' => [
 			'domain_id' => [
@@ -169,7 +186,7 @@ const COLLECTIONS_TEMPLATE = [
 		]
 	],
 	'users' => [
-		'table' => 'urls_users',
+		'source' => 'urls_users',
 		'acl' => 'users',
 		'fields' => [
 			'user_id' => [
@@ -228,7 +245,7 @@ const COLLECTIONS_TEMPLATE = [
 		]
 	],
 	'shadows' => [
-		'table' => 'urls_shadows',
+		'source' => 'urls_shadows',
 		'public' => false,
 		'fields' => [
 			'event' => [
@@ -277,11 +294,19 @@ class ConfigSchema extends \framework\ConfigSchema {
 	public function __construct() {
 		parent::__construct();
 
-		$this->schema->Network['user_acl'] = (new Config_SchemaField_Schema)
-			->set('type', \framework\VALUE_STR, $this->schema);
+		$field_shorthand = new \framework\creator\CreatorSchemaField();
+		$field_shorthand->setShorthand($this, $this->field, 'type');
 
-		$this->schema->Network['user_action_lifetime'] = (new Config_SchemaField_Schema)
-			->set('type', \framework\VALUE_INT, $this->schema);
+		$this->items->Database = [
+			'dsn' => $field_shorthand->set(\framework\VALUE_STR),
+			'username' => $field_shorthand->set(\framework\VALUE_STR),
+			'password' => $field_shorthand->set(\framework\VALUE_STR),
+			'options' => $field_shorthand->set(\framework\VALUE_ARR),
+			'shadow' => $field_shorthand->set(\framework\VALUE_BOOL)
+		];
+
+		$this->items->Network['user_acl'] = $field_shorthand->set(\framework\VALUE_STR);
+		$this->items->Network['user_action_lifetime'] = $field_shorthand->set(\framework\VALUE_INT);
 	}
 }
 
@@ -294,9 +319,12 @@ class ConfigSchema extends \framework\ConfigSchema {
 
 
 
+// var_dump(new StoreCollection);
+// var_dump(serialize(new StoreCollection));
+// var_dump(json_encode(new StoreCollection));
 
+// var_dump(new ConfigSchema);
 // new \framework\ConfigSchema(\urls\CONFIG_TEMPLATE, 'Config');
-// new \urls\CollectionSchema(\urls\COLLECTIONS_TEMPLATE['store'], 'Store');
 
 
 

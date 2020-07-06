@@ -55,10 +55,7 @@ class API implements ApiInterface {
 		$this->_temp_debug();
 
 
-		$config_schema = new \framework\ConfigSchema();
-		$config_schema->fromArray(\urls\CONFIG_TEMPLATE, 'Config');
-
-		$config = new Config($config_schema);
+		$config = new Config(new ConfigSchema);
 		$config->fromArray(\framework\CONFIG);
 		$this->config = $config->get();
 

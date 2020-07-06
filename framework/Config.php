@@ -149,7 +149,7 @@ class Config implements ConfigInterface {
 	}
 
 	private function validateFixDeep(array $config) {
-		foreach ($this->schema->schema as $section => $values) {
+		foreach ($this->schema->items as $section => $values) {
 			if (! \array_key_exists($section, $config))
 				throw new Exception(sprintf('Undefined schema section: %s', $section));
 
@@ -157,7 +157,7 @@ class Config implements ConfigInterface {
 				throw new Exception('Value is not of type array');
 
 			foreach ($values as $key => $value) {
-				if (! \array_key_exists($key, $this->schema->schema->{$section}))
+				if (! \array_key_exists($key, $this->schema->items->{$section}))
 					throw new Exception(sprintf('Undefined schema key: %s', $key));
 
 				if (gettype($config[$section][$key]) !== $this->type($value->type)) {
@@ -173,8 +173,8 @@ class Config implements ConfigInterface {
 	}
 
 	private function validateFixPlain(array $config) {
-		foreach ($this->schema->schema as $key => $type) {
-			if (! \array_key_exists($key, $this->schema))
+		foreach ($this->schema->items as $key => $value) {
+			if (! \array_key_exists($key, $this->schema->items))
 				throw new Exception(sprintf('Undefined schema key: %s', $key));
 
 			if (gettype($config[$key]) !== $this->type($value->type)) {
