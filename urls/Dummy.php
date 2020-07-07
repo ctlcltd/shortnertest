@@ -26,6 +26,8 @@ interface DummyInterface {
 }
 
 class Dummy implements DummyInterface {
+	const SHADOW_COLLECTION = 'urls_shadows';
+
 	private array $config;
 	private object $cth;
 	private object $ath;
@@ -47,7 +49,7 @@ class Dummy implements DummyInterface {
 
 		$key = key($id_key);
 
-		return $this->cth->shadow($collection, 'shadows', $event,
+		return $this->cth->shadow($collection, self::SHADOW_COLLECTION, $event,
 			[[$key, $id_key[$key]]],
 			[
 				['event', 'token'],

@@ -76,19 +76,166 @@ const ROUTES = [
 
 
 
-class StoreCollection extends Collection {
+final class StoreCollection extends Collection {
 	public string $label = 'Store';
 	public string $source = 'urls_store';
 	public string $acl = 'store';
 
-	public function __construct() {
-		parent::__construct();
+	public function __fields() {
+		$this->field('store_id')
+			->set('type', \framework\VALUE_STR)
+			->set('readonly', true);
 
-		// var_dump($this);
+		$this->field('user_id')
+			->set('type', \framework\VALUE_STR)
+			->set('acl', '*')
+			->set('readonly', true);
+
+		$this->field('domain_id')
+			->set('type', \framework\VALUE_STR)
+			->set('readonly', true);
+
+		$this->field('event')
+			->set('type', \framework\VALUE_ARR)
+			->set('acl', '*')
+			->set('public', false);
+
+		$this->field('store_time_created')
+			->set('type', \framework\VALUE_STR)
+			->set('muta', 'datetime')
+			->set('acl', '*')
+			->set('readonly', true);
+
+		$this->field('store_time_modified')
+			->set('type', \framework\VALUE_STR)
+			->set('muta', 'datetime')
+			->set('acl', '*')
+			->set('readonly', true);
+
+		$this->field('store_index')
+			->set('type', \framework\VALUE_STR)
+			->set('acl', '*')
+			->set('readonly', true);
+
+		$this->field('store_slug')
+			->set('type', \framework\VALUE_STR)
+			->set('readonly', true);
+
+		$this->field('store_url')
+			->set('type', \framework\VALUE_STR)
+			->set('muta', 'url');
 	}
 }
 
-const COLLECTIONS_TEMPLATE = [
+
+final class DomainsCollection extends Collection {
+	public string $label = 'Domains';
+	public string $source = 'urls_domains';
+	public string $acl = 'domains';
+
+	public function __fields() {
+		$this->field('domain_id')
+			->type(\framework\VALUE_STR)
+			->readonly(true);
+
+		$this->field('user_id')
+			->set('type', \framework\VALUE_STR)
+			->set('acl', '*')
+			->set('readonly', true);
+
+		$this->field('event')
+			->set('type', \framework\VALUE_ARR)
+			->set('acl', '*')
+			->set('public', false);
+
+		$this->field('domain_time_created')
+			->set('type', \framework\VALUE_STR)
+			->set('muta', 'datetime')
+			->set('acl', '*')
+			->set('readonly', true);
+
+		$this->field('domain_time_modified')
+			->set('type', \framework\VALUE_STR)
+			->set('muta', 'datetime')
+			->set('acl', '*')
+			->set('readonly', true);
+
+		$this->field('domain_master')
+			->set('type', \framework\VALUE_STR)
+			->set('muta', 'url')
+			->set('php:validate', [FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME])
+			->set('js:transform', 'hostname');
+
+		$this->field('domain_service')
+			->set('type', \framework\VALUE_STR)
+			->set('muta', 'url')
+			->set('transform', 'hostname');
+
+		$this->field('domain_enable')
+			->set('type', \framework\VALUE_STR)
+			->set('acl', '*')
+			->set('muta', 'check');
+	}
+}
+
+
+final class UsersCollection extends Collection {
+	public string $label = 'Users';
+	public string $source = 'urls_users';
+	public string $acl = 'users';
+
+	public function __fields() {
+		$this->field('user_id')
+			->set('type', \framework\VALUE_STR)
+			->set('readonly', true);
+
+		$this->field('event')
+			->set('type', \framework\VALUE_ARR)
+			->set('acl', '*')
+			->set('public', false);
+
+		$this->field('user_time_created')
+			->set('type', \framework\VALUE_STR)
+			->set('muta', 'datetime')
+			->set('acl', '*')
+			->set('readonly', true);
+
+		$this->field('user_time_modified')
+			->set('type', \framework\VALUE_STR)
+			->set('muta', 'datetime')
+			->set('acl', '*')
+			->set('readonly', true);
+
+		$this->field('user_pending')
+			->set('type', \framework\VALUE_ARR)
+			->set('acl', '*')
+			->set('readonly', true);
+
+		$this->field('user_email')
+			->set('type', \framework\VALUE_STR)
+			->set('muta', 'email')
+			->set('acl', '*');
+
+		$this->field('user_name')
+			->set('type', \framework\VALUE_STR)
+			->set('transform', 'user_name')
+			->set('acl', '*');
+
+		$this->field('user_pass')
+			->set('type', \framework\VALUE_STR)
+			->set('acl', '*')
+			->set('public', false);
+
+		$this->field('user_notify')
+			->set('type', \framework\VALUE_INT)
+			->set('muta', 'radio')
+			->set('transform', 'user_notify')
+			->set('acl', '*');
+	}
+}
+
+
+/*const COLLECTIONS_TEMPLATE = [
 	'store' => [
 		'source' => 'urls_store',
 		'acl' => 'store',
@@ -243,29 +390,8 @@ const COLLECTIONS_TEMPLATE = [
 				'acl' => '*'
 			]
 		]
-	],
-	'shadows' => [
-		'source' => 'urls_shadows',
-		'public' => false,
-		'fields' => [
-			'event' => [
-				'type' => \framework\VALUE_ARR,
-				'acl' => '*',
-				'public' => false
-			],
-			'shadow_time' => [
-				'type' => \framework\VALUE_STR,
-				'acl' => '*',
-				'public' => false
-			],
-			'shadow_blob' => [
-				'type' => \framework\VALUE_ARR,
-				'acl' => '*',
-				'public' => false
-			]
-		]
 	]
-];
+];*/
 
 
 /*const CONFIG_TEMPLATE = [
@@ -317,14 +443,24 @@ class ConfigSchema extends \framework\ConfigSchema {
 
 
 
+// $config = new \framework\Config(new \framework\ConfigSchema);
+// $config->fromIniFile(__DIR__ . '/config.ini.php');
+// $config = $config->get();
 
+// $database = new VirtualNew($config['Database']);
 
-// var_dump(new StoreCollection);
-// var_dump(serialize(new StoreCollection));
-// var_dump(json_encode(new StoreCollection));
+// $store_collection = new StoreCollection($database);
+// $domains_collection = new DomainsCollection($database);
+// $users_collection = new UsersCollection($database);
 
-// var_dump(new ConfigSchema);
-// new \framework\ConfigSchema(\urls\CONFIG_TEMPLATE, 'Config');
+// var_dump(serialize($store_collection));
+// var_dump(json_decode(json_encode($store_collection, JSON_PARTIAL_OUTPUT_ON_ERROR), true));
+
+// var_dump(serialize($domains_collection));
+// var_dump(json_decode(json_encode($domains_collection, JSON_PARTIAL_OUTPUT_ON_ERROR), true));
+
+// var_dump(serialize($users_collection));
+// var_dump(json_decode(json_encode($users_collection, JSON_PARTIAL_OUTPUT_ON_ERROR), true));
 
 
 

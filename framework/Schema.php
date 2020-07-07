@@ -13,9 +13,9 @@ use \Exception;
 
 
 abstract class Schema {
+	public string $name;
 	protected string $schema;
 	protected string $field;
-	public string $name;
 	public object $items;
 
 	public function __construct() {
@@ -24,22 +24,48 @@ abstract class Schema {
 }
 
 abstract class SchemaField {
-	public function set(string $key, $value, $schema) {
-		$this->{$key} = method_exists($this, $key) ? $this->{$key}($value, $schema) : $value;
+}
+
+abstract class SchemaMask {
+	public bool $interrupt = false;
+	public string $name;
+	public object $schema;
+	public object $field;
+
+	public function __construct(string $name, object $schema, object $field) {
+		$this->name = $name;
+		$this->schema = $schema;
+		$this->field = $field;
+		$this->interrupt = true;
+	}
+
+	public function __call(string $key, array $arguments) {
+		$this->schema->{$key} = $this->field->{$key} = $arguments[0];
 
 		return $this;
 	}
 
-	public function get(string $key) {
-		if ($key) return $this->{$key};
-
-		return $this->{$key};
+	public function __set(string $key, $value) {
+		if ($this->interrupt)
+			$this->schema->{$key} = $this->field->{$name} = $value;
 	}
 
-	public function caller($callable, $i, $schema) {
-		$value = isset($this->{$callable}) ? $this->{$callable} : null;
+	public function __get(string $key) {
+		if (method_exists($this, $key)) {
+			$this->schema->{$key} = $this->field->{$key} = $this->{$key}('', $this->field, $this->name);
+		}
 
-		$this->$callable($value, $schema);
+		return isset($this->field->{$key}) ? $this->field->{$key} : NULL;
+	}
+
+	public function set($key, $value) {
+		$this->schema->{$key} = $this->field->{$key} = $value;
+
+		return $this;
+	}
+
+	public function get($key) {
+		return $this->field->{$key};
 	}
 }
 
@@ -90,6 +116,18 @@ class Config_SchemaField_Schema extends SchemaField {
 
 class Config_SchemaField_Field extends SchemaField {
 	public string $type;
+
+	//-TEMP
+	public function set($key, $value) {
+		$this->{$key} = $value;
+
+		return $this;
+	}
+
+	public function get($key) {
+		return $this->{$key};
+	}
+	//-TEMP
 }
 
 
@@ -106,20 +144,20 @@ class ConfigSchema extends Schema {
 
 		$this->items->Host = [
 			'ssr' => (new Config_SchemaField_Field)
-				->set('type', \framework\VALUE_BOOL, $this),
+				->set('type', \framework\VALUE_BOOL),
 			'error_404' => (new Config_SchemaField_Field)
-				->set('type', \framework\VALUE_STR, $this),
+				->set('type', \framework\VALUE_STR),
 			'error_50x' => (new Config_SchemaField_Field)
-				->set('type', \framework\VALUE_STR, $this),
+				->set('type', \framework\VALUE_STR),
 			'backend_path' => (new Config_SchemaField_Field)
-				->set('type', \framework\VALUE_STR, $this)
+				->set('type', \framework\VALUE_STR)
 		];
 
 		$this->items->Network = [
 			'setup' => (new Config_SchemaField_Field)
-				->set('type', \framework\VALUE_BOOL, $this),
+				->set('type', \framework\VALUE_BOOL),
 			'api_test' => (new Config_SchemaField_Field)
-				->set('type', \framework\VALUE_BOOL, $this)
+				->set('type', \framework\VALUE_BOOL)
 		];
 
 		// var_dump($this);
