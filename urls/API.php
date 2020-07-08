@@ -22,7 +22,10 @@ use \urls\App;
 use \urls\Virtual;
 
 
-class API extends \framework\API implements APIInterface {
+class API extends \framework\API implements \framework\APIInterface {
+	private string $Router = '\framework\Router';
+	private string $Authentication = '\urls\Authentication';
+	private string $App = '\urls\App';
 	private $shortner;
 
 	public function __construct() {
@@ -35,10 +38,7 @@ class API extends \framework\API implements APIInterface {
 		$config->fromIniFile(__DIR__ . '/../config.ini.php');
 		$this->config = $config->get();
 
-		$this->Authentication = '\urls\Authentication';
-		$this->App = '\urls\App';
-
-		$this->dbo = new Virtual($this->config['Database']);
+		$this->dbo = new Virtual($this->config);
 
 		$this->app = new $this->App($this->config, $this->dbo);
 		$this->ath = new $this->Authentication($this->config, $this->dbo, $this->app);
@@ -46,13 +46,7 @@ class API extends \framework\API implements APIInterface {
 		$this->routes = \urls\ROUTES;
 		$this->shortner = new Shortner;
 
-		//same origin
-
-		$path_info = empty($_SERVER['PATH_INFO']) ? NULL : $_SERVER['PATH_INFO'];
-		$method = $_SERVER['REQUEST_METHOD'];
-		$endpoint = $this->getPathInfo($path_info);
-
-		$this->router($method, $endpoint);
+		new $this->Router($this->config, $this);
 	}
 
 	public function __destruct() {

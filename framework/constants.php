@@ -36,7 +36,7 @@ const ROUTES = [
 		'POST' => [ 'access' => true ]
 	],
 	'/setup' => [
-		'GET' => [ 'call' => 'install', 'setup' => true ]
+		'GET' => [ 'setup' => true ]
 	],
 	'/sample' => [
 		'GET' => [ 'call' => 'sample' ]

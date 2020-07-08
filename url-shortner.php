@@ -12,20 +12,21 @@ namespace urls;
 use \framework\Config_SchemaField_Schema;
 use \framework\creator\CreatorSchemaField;
 
-use \urls\Collection_SchemaField_Schema;
-use \urls\Collection_SchemaField_Field;
+use \framework\Collection_SchemaField_Schema;
+use \framework\Collection_SchemaField_Field;
 
 
 require_once __DIR__ . '/framework/constants.php';
-require_once __DIR__ . '/framework/Config.php';
-require_once __DIR__ . '/framework/Database.php';
-require_once __DIR__ . '/framework/Authentication.php';
 require_once __DIR__ . '/framework/Schema.php';
+require_once __DIR__ . '/framework/Config.php';
+require_once __DIR__ . '/framework/Router.php';
+require_once __DIR__ . '/framework/Authentication.php';
+require_once __DIR__ . '/framework/Database.php';
+require_once __DIR__ . '/framework/Collection.php';
 require_once __DIR__ . '/framework/App.php';
 require_once __DIR__ . '/framework/Logger.php';
 require_once __DIR__ . '/framework/API.php';
 
-require_once __DIR__ . '/urls/Collection.php';
 require_once __DIR__ . '/urls/App.php';
 require_once __DIR__ . '/urls/Authentication.php';
 require_once __DIR__ . '/urls/API.php';
@@ -75,8 +76,7 @@ const ROUTES = [
 ];
 
 
-
-final class StoreCollection extends Collection {
+final class StoreCollection extends \framework\Collection {
 	public string $label = 'Store';
 	public string $source = 'urls_store';
 	public string $acl = 'store';
@@ -128,15 +128,20 @@ final class StoreCollection extends Collection {
 }
 
 
-final class DomainsCollection extends Collection {
+final class DomainsCollection extends \framework\Collection {
 	public string $label = 'Domains';
 	public string $source = 'urls_domains';
 	public string $acl = 'domains';
 
 	public function __fields() {
+
+		// $this->field('domain_id')
+		// 	->type(\framework\VALUE_STR)
+		// 	->readonly(true);
+
 		$this->field('domain_id')
-			->type(\framework\VALUE_STR)
-			->readonly(true);
+			->set('type', \framework\VALUE_STR)
+			->set('readonly', true);
 
 		$this->field('user_id')
 			->set('type', \framework\VALUE_STR)
@@ -179,7 +184,7 @@ final class DomainsCollection extends Collection {
 }
 
 
-final class UsersCollection extends Collection {
+final class UsersCollection extends \framework\Collection {
 	public string $label = 'Users';
 	public string $source = 'urls_users';
 	public string $acl = 'users';
@@ -420,7 +425,7 @@ class ConfigSchema extends \framework\ConfigSchema {
 	public function __construct() {
 		parent::__construct();
 
-		$field_shorthand = new \framework\creator\CreatorSchemaField();
+		$field_shorthand = new \framework\creator\CreatorSchemaField;
 		$field_shorthand->setShorthand($this, $this->field, 'type');
 
 		$this->items->Database = [

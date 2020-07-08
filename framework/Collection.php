@@ -1,21 +1,21 @@
 <?php
 /**
- * urls/Collections.php
+ * framework/Collections.php
  * 
  * @author Leonardo Laureti <https://loltgt.ga>
  * @version staging
  * @license MIT License
  */
 
-namespace urls;
+declare(strict_types=1);
+
+namespace framework;
 
 use \Exception;
 
 use \framework\Schema;
 use \framework\SchemaField;
 use \framework\SchemaMask;
-
-use \urls\Virtual;
 
 
 class Collection_SchemaField_Schema extends SchemaField {
@@ -69,10 +69,21 @@ class CollectionSchema {
 class CollectionField {
 }
 
-class Collection {
+interface CollectionInterface {
+	public function __set($key, $value);
+	public function __fields();
+	public function field($name);
+	public function fetch($keys, bool $single, bool $distinct);
+	public function add();
+	public function update();
+	public function remove();
+}
+
+class Collection implements CollectionInterface {
 	public string $label;
 	public string $source;
 	public string $acl;
+	public array $fields = [];
 	protected object $_schema;
 	protected object $_field;
 	protected object $_mask;
@@ -85,10 +96,7 @@ class Collection {
 		$this->_mask = new Collection_SchemaMask_Schema($this->label, $this->_schema, $this);
 		$this->data = $database;
 
-		$this->fields = [];
-
-		if (method_exists($this, '__fields'))
-			$this->__fields();
+		$this->__fields();
 
 		$this->label;
 
@@ -99,17 +107,21 @@ class Collection {
 		if ($this->blind)
 			throw new Exception('Cannot override initial set properties.');
 
-		if ($value)
-			$this->_mask->field->{$key} = $this->{$key} = $value;
+		$this->_mask->field->{$key} = $this->{$key} = $value;
+	}
+
+	public function __fields() {
 	}
 
 	public function field($name) {
-		if (isset($this->fields[$name]))
-			$field = $this->fields[$name];
-		else
-			$field = new \urls\CollectionField;
+		static $mask;
 
-		$mask = new Collection_SchemaMask_Field($name, $this->_field, $field);
+		if (isset($this->fields[$name])) {
+			$field = $this->fields[$name];
+		} else {
+			$field = new CollectionField;
+			$mask = new Collection_SchemaMask_Field($name, $this->_field, $field);
+		}
 
 		//autofill
 		$mask->label;

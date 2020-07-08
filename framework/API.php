@@ -15,26 +15,24 @@ use \Exception;
 use \ErrorException;
 use \Error;
 
-use \framework\App;
+use \framework\ConfigSchema;
+use \framework\Config;
+use \framework\Router;
 use \framework\Authentication;
+use \framework\App;
 
 
 interface ApiInterface {
 	public function error(int $errno, string $errstr, string $errfile, int $errline);
 	public function exception(object $exception);
-	public function getPathInfo($path_info);
+	public function needAuthentication(bool $only_check);
+	public function setHeader(int $reponse_code, bool $stop_exec);
+	public function allowRequest(string $call, array $body);
+	public function setup(string $method, string $endpoint);
 	public function authenticate(array $request);
 	public function isAuthenticated();
-	public function router(string $method, string $endpoint);
-	public function response(bool $status, $data);
 	public function request(object $func, string $call, array $request);
-	public function install(string $method, string $endpoint);
-	public function allow();
-	public function deny();
-	public function busy();
-	public function unreachable();
-	public function notFound();
-	public function noContent();
+	public function response(bool $status, $data);
 	public function raiseParametersMissing(array $method_params);
 	public function raiseParametersWrong(array $params_diff);
 }
@@ -42,11 +40,14 @@ interface ApiInterface {
 class APIException extends Exception {}
 
 class API implements ApiInterface {
+	private string $Router = '\framework\Router';
+	private string $Authentication = '\framework\Authentication';
+	private string $App = '\framework\App';
 	public array $config;
 	public object $dbo;
 	public object $app;
+	public object $ath;
 	public array $routes;
-
 
 	public function __construct() {
 		set_error_handler([$this, 'error']);
@@ -59,23 +60,12 @@ class API implements ApiInterface {
 		$config->fromArray(\framework\CONFIG);
 		$this->config = $config->get();
 
-		$this->Authentication = '\framework\Authentication';
-		$this->App = '\framework\App';
-
 		$this->dbo = new stdClass;
 
 		$this->app = new $this->App($this->config, $this->dbo);
 		$this->ath = new $this->Authentication($this->config);
 
-		$this->routes = \framework\ROUTES;
-
-		//same origin
-
-		$path_info = empty($_SERVER['PATH_INFO']) ? NULL : $_SERVER['PATH_INFO'];
-		$method = $_SERVER['REQUEST_METHOD'];
-		$endpoint = $this->getPathInfo($path_info);
-
-		$this->router($method, $endpoint);
+		new $this->Router($this->config, $this);
 	}
 
 	public function __destruct() {
@@ -103,7 +93,7 @@ class API implements ApiInterface {
 	public function exception(object $exception) {
 		$msg = $exception->getMessage();
 
-		header('Status: 500', true, 500);
+		$this->setHeader(Router::HTTP_HEADER_INTERNAL_ERROR, false);
 
 		$this->response(false, $msg);
 
@@ -111,15 +101,39 @@ class API implements ApiInterface {
 		// error_log($msg);
 	}
 
-	public function getPathInfo($path_info) {
-		if (! $path_info) return '/';
+	public function needAuthentication(bool $only_check) {
+		if ($only_check) return $this->isAuthenticated();
 
-		if ($sq = strpos('?', $path_info))
-			$path_info = substr($path_info, 0, $sq);
-		
-		$path_info = rtrim($path_info, '/');
+		return $this->authenticate($_POST);
+	}
 
-		return $path_info;
+	public function setHeader(int $response_code, bool $stop_exec = NULL) {
+		header("Status: {$response_code}", true, $response_code);
+
+		if ((isset($stop_exec) && $stop_exec) && $response_code > 204)
+			exit;
+	}
+
+	public function allowRequest(string $call, array $body) {
+		if (method_exists($this->app, $call)) {
+			$this->dbo->connect();
+
+			$this->request($this->app, $call, $body);
+		}
+
+		return $this->setHeader(Router::HTTP_HEADER_UNREACHABLE);
+	}
+
+	public function setup(string $method, string $endpoint) {
+		if (method_exists($this->app, 'install')) {
+			$this->requestHeader(Router::HTTP_HEADER_ALLOW);
+
+			$this->dbo->connect();
+
+			return $this->request($this->app, 'install', $body);
+		}
+
+		return $this->setHeader(Router::HTTP_HEADER_UNREACHABLE);
 	}
 
 	public function authenticate(array $body) {
@@ -156,57 +170,6 @@ class API implements ApiInterface {
 		}
 
 		$this->ath->commit();
-	}
-
-	public function router(string $method, string $endpoint) {
-		if (! isset($this->routes[$endpoint]) || ! isset($this->routes[$endpoint][$method]))
-			return $this->unreachable();
-
-		$need_auth = true;
-
-		if (isset($this->routes[$endpoint][$method]['auth']))
-			$need_auth = $this->routes[$endpoint][$method]['auth'];
-
-		if (isset($this->routes[$endpoint][$method]['access'])) {
-			return $this->authenticate($_POST);
-		} else if (isset($this->routes[$endpoint][$method]['setup'])) {
-			if ($this->config['Network']['nwsetup']) return $this->install($method, $endpoint);
-			else return $this->notFound();
-		} else if (isset($this->routes[$endpoint][$method]['call'])) {
-			if (! $need_auth) $this->allow();
-			else if ($this->isAuthenticated()) $this->allow();
-			else return $this->deny();
-		} else {
-			return $this->unreachable();
-		}
-
-		$call = $this->routes[$endpoint][$method]['call'];
-
-		if ($method === 'GET') {
-			$body = $_GET;
-		} else if ($method !== 'POST') {
-			$body = []; 
-			$bodyraw = file_get_contents('php://input');
-
-			parse_str($bodyraw, $body);
-		} else {
-			$body = $_POST;
-		}
-
-		if ($call && method_exists($this->app, $call))
-			return $this->request($this->app, $call, $body);
-
-		return $this->notFound();
-	}
-
-	public function response(bool $status, $response) {
-		$output = ['status' => $status, 'data' => 0];
-
-		if ($status && empty($response)) $this->noContent();
-		else if (is_bool($response)) $output['data'] = (int) $response;
-		else $output['data'] = $response;
-
-		echo json_encode($output);
 	}
 
 	public function request(object $func, string $call, array $request) {
@@ -268,51 +231,14 @@ class API implements ApiInterface {
 		exit;
 	}
 
-	public function install(string $method, string $endpoint) {
-		$call = $this->routes[$endpoint][$method]['call'];
+	public function response(bool $status, $response) {
+		$output = ['status' => $status, 'data' => 0];
 
-		// try {
-		 	if ($call && method_exists($this->app, $call)) {
-		 		$this->allow();
+		if ($status && empty($response)) $this->noContent();
+		else if (is_bool($response)) $output['data'] = (int) $response;
+		else $output['data'] = $response;
 
-		 		return $this->request($this->app, $call, $_GET);
-		// 		return $this->request($this->app, $call, $_POST);
-			}
-		// } catch (Exception $error) {
-		// 	trigger_error($error);
-		// }
-
-		return $this->unreachable();
-	}
-
-	public function allow() {
-		$this->dbo->connect();
-
-		header('Status: 200', true, 200);
-	}
-
-	public function deny() {
-		header('Status: 401', true, 401);
-		exit;
-	}
-
-	public function busy() {
-		header('Status: 503', true, 503);
-		exit;
-	}
-
-	public function unreachable() {
-		header('Status: 403', true, 403);
-		exit;
-	}
-
-	public function notFound() {
-		header('Status: 404', true, 404);
-		exit;
-	}
-
-	public function noContent() {
-		//header('Status: 204', true, 204);
+		echo json_encode($output);
 	}
 
 	public function raiseParametersMissing(array $method_params) {

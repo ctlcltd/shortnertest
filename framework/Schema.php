@@ -7,6 +7,8 @@
  * @license MIT License
  */
 
+declare(strict_types=1);
+
 namespace framework;
 
 use \Exception;
@@ -26,7 +28,15 @@ abstract class Schema {
 abstract class SchemaField {
 }
 
-abstract class SchemaMask {
+interface SchemaMaskInterface {
+	public function __call(string $key, array $arguments);
+	public function __set(string $key, $value);
+	public function __get(string $key);
+	public function set($key, $value);
+	public function get($key);
+}
+
+abstract class SchemaMask implements SchemaMaskInterface {
 	public bool $interrupt = false;
 	public string $name;
 	public object $schema;
@@ -40,14 +50,21 @@ abstract class SchemaMask {
 	}
 
 	public function __call(string $key, array $arguments) {
-		$this->schema->{$key} = $this->field->{$key} = $arguments[0];
+		// if (property_exists($this, $key))
+		 	$this->schema->{$key} = $this->field->{$key} = $arguments[0];
+		// else
+		// 	throw new Exception(sprintf('Unknown property %s', $key));
 
 		return $this;
 	}
 
 	public function __set(string $key, $value) {
-		if ($this->interrupt)
+		if ($this->interrupt) return;
+
+		//if (property_exists($this, $key))
 			$this->schema->{$key} = $this->field->{$name} = $value;
+		//else
+		//	throw new Exception(sprintf('Unknown property %s', $key));
 	}
 
 	public function __get(string $key) {
@@ -96,70 +113,5 @@ class CreatorSchemaField {
 		// if (count($args) > 1) return (new $this->field)->set((string) $args[0], $args[1], $this->schema);
 		// else 
 		return (new $this->field)->set($this->key, $args[0], $this->schema);
-	}
-}
-
-
-
-namespace framework;
-
-class RouteFieldSchemaField extends SchemaField {
-	public string $call;
-	public bool $access;
-	public bool $install;
-	public bool $setup;
-	public bool $auth;
-}
-
-class Config_SchemaField_Schema extends SchemaField {
-}
-
-class Config_SchemaField_Field extends SchemaField {
-	public string $type;
-
-	//-TEMP
-	public function set($key, $value) {
-		$this->{$key} = $value;
-
-		return $this;
-	}
-
-	public function get($key) {
-		return $this->{$key};
-	}
-	//-TEMP
-}
-
-
-class RoutesSchema extends Schema {
-}
-
-class ConfigSchema extends Schema {
-	public string $name = 'ConfigSchema';
-	public string $schema = '\framework\Config_SchemaField_Schema';
-	public string $field = '\framework\Config_SchemaField_Field';
-
-	public function __construct() {
-		parent::__construct();
-
-		$this->items->Host = [
-			'ssr' => (new Config_SchemaField_Field)
-				->set('type', \framework\VALUE_BOOL),
-			'error_404' => (new Config_SchemaField_Field)
-				->set('type', \framework\VALUE_STR),
-			'error_50x' => (new Config_SchemaField_Field)
-				->set('type', \framework\VALUE_STR),
-			'backend_path' => (new Config_SchemaField_Field)
-				->set('type', \framework\VALUE_STR)
-		];
-
-		$this->items->Network = [
-			'setup' => (new Config_SchemaField_Field)
-				->set('type', \framework\VALUE_BOOL),
-			'api_test' => (new Config_SchemaField_Field)
-				->set('type', \framework\VALUE_BOOL)
-		];
-
-		// var_dump($this);
 	}
 }

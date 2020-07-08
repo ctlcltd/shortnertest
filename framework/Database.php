@@ -67,17 +67,17 @@ class DatabaseSQL implements DatabaseInterface {
 
 	protected $statement, $command, $collection, $clauses;
 
-	public function __construct(array $config_db) {
-		$this->config = $config_db;
+	public function __construct(array $config) {
+		$this->config = $config;
 	}
 
 	public function connect() {
 		try {
 			$this->dbh = new PDO(
-				$this->config['dsn'],
-				$this->config['username'],
-				$this->config['password'],
-				$this->config['options']
+				$this->config['Database']['dsn'],
+				$this->config['Database']['username'],
+				$this->config['Database']['password'],
+				$this->config['Database']['options']
 			);
 
 			$this->dbh->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_WARNING);
@@ -92,7 +92,7 @@ class DatabaseSQL implements DatabaseInterface {
 
 	public function transaction() {
 		if (! empty($this->statement))
-			throw new DatabaseException('Opened statement');
+			throw new DatabaseException('There is an opened statement in execution');
 
 		return $this->dbh->beginTransaction();
 	}
@@ -155,12 +155,16 @@ class DatabaseSQL implements DatabaseInterface {
 		if (
 			($this->command === 'add' || $this->command === 'update') &&
 			! isset($this->statement['set'])
-		) throw new DatabaseException(sprintf('Undef set for %s', $this->command));
+		) throw new DatabaseException(
+				sprintf('Undefined properties in %s statement for %s clause',  $this->command, 'Set')
+			);
 
 		if (
 			($this->command === 'update' || $this->command === 'remove') &&
 			! isset($this->statement['where'])
-		) throw new DatabaseException(sprintf('Undef where for %s', $this->command));
+		) throw new DatabaseException(
+				sprintf('Undefined properties in %s statement for %s clause', $this->command, 'Where')
+			);
 
 		$_key_prefix_transfunc = function($key) {
 			return ":{$key}";
@@ -173,7 +177,7 @@ class DatabaseSQL implements DatabaseInterface {
 		};
 		$_where_flat_transfunc = function(&$value, $key, &$i) {
 			if ($i++ && empty($value['condition']))
-				throw new DatabaseException('WHERE clause');
+				throw new DatabaseException('There are multiple Where clauses without explicit conditions');
 
 			$value = "{$value['condition']} {$key}=:{$key}";
 		};
@@ -292,7 +296,7 @@ class DatabaseSQL implements DatabaseInterface {
 
 	public function select($keys, bool $single = false, bool $distinct = false) {
 		if (! $this->clauses['select'])
-			throw new Exception('Select clause not allowed');
+			throw new Exception(sprintf('%s clause is not allowed', 'Select'));
 
 		$this->statement['select'] = [
 			'single' => $single,
@@ -306,7 +310,7 @@ class DatabaseSQL implements DatabaseInterface {
 
 	public function count() {
 		if (! $this->clauses['count'])
-			throw new Exception('Count clause not allowed');
+			throw new Exception(sprintf('%s clause is not allowed', 'Count'));
 
 		$this->statement['select']['count'] = true;
 
@@ -315,7 +319,7 @@ class DatabaseSQL implements DatabaseInterface {
 
 	public function set(string $param, $value, int $type = \framework\VALUE_STR) {
 		if (! $this->clauses['set'])
-			throw new Exception('Set clause not allowed');
+			throw new Exception(sprintf('%s clause is not allowed', 'Set'));
 
 		$this->statement['set'][$param] = [
 			'value' => $value,
@@ -327,7 +331,7 @@ class DatabaseSQL implements DatabaseInterface {
 
 	public function where(string $param, $value, int $type = \framework\VALUE_STR, string $condition = '') {
 		if (! $this->clauses['where'])
-			throw new Exception('Where clause not allowed');
+			throw new Exception(sprintf('%s clause is not allowed', 'Where'));
 
 		if (! empty($this->statement['where']) && ! $condition)
 			$condition = 'and';
@@ -343,7 +347,7 @@ class DatabaseSQL implements DatabaseInterface {
 
 	public function sort(string $param, string $sort_by = 'desc') {
 		if (! $this->clauses['sort'])
-			throw new Exception('Sort clause not allowed');
+			throw new Exception(sprintf('%s clause is not allowed', 'Sort'));
 
 		$this->statement['sort'][$param] = strtoupper($sort_by);
 
@@ -352,7 +356,7 @@ class DatabaseSQL implements DatabaseInterface {
 
 	public function group(string $param, $group_by) {
 		if (! $this->clauses['group'])
-			throw new Exception('Group clause not allowed');
+			throw new Exception(sprintf('%s clause is not allowed', 'Group'));
 
 		$this->statement['group'][$param] = strtoupper($group_by);
 
@@ -361,7 +365,7 @@ class DatabaseSQL implements DatabaseInterface {
 
 	public function limit(int $limit_offset, int $limit = 0) {
 		if (! $this->clauses['limit'])
-			throw new Exception('Limit clause not allowed');
+			throw new Exception(sprintf('%s clause is not allowed', 'Limit'));
 
 		if (! $limit) {
 			$this->statement['limit']['to'] = (int) $limit_offset;

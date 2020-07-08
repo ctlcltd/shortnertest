@@ -7,10 +7,65 @@
  * @license MIT License
  */
 
+declare(strict_types=1);
+
 namespace framework;
 
 use \stdClass;
 use \Exception;
+
+use \framework\Schema;
+use \framework\SchemaField;
+
+
+class ConfigSchema extends Schema {
+	public string $name = 'ConfigSchema';
+	public string $schema = '\framework\Config_SchemaField_Schema';
+	public string $field = '\framework\Config_SchemaField_Field';
+
+	public function __construct() {
+		parent::__construct();
+
+		$this->items->Host = [
+			'ssr' => (new Config_SchemaField_Field)
+				->set('type', \framework\VALUE_BOOL),
+			'error_404' => (new Config_SchemaField_Field)
+				->set('type', \framework\VALUE_STR),
+			'error_50x' => (new Config_SchemaField_Field)
+				->set('type', \framework\VALUE_STR),
+			'backend_path' => (new Config_SchemaField_Field)
+				->set('type', \framework\VALUE_STR)
+		];
+
+		$this->items->Network = [
+			'setup' => (new Config_SchemaField_Field)
+				->set('type', \framework\VALUE_BOOL),
+			'api_test' => (new Config_SchemaField_Field)
+				->set('type', \framework\VALUE_BOOL)
+		];
+
+		// var_dump($this);
+	}
+}
+
+class Config_SchemaField_Schema extends SchemaField {
+}
+
+class Config_SchemaField_Field extends SchemaField {
+	public int $type;
+
+	//-TEMP
+	public function set($key, $value) {
+		$this->{$key} = $value;
+
+		return $this;
+	}
+
+	public function get($key) {
+		return $this->{$key};
+	}
+	//-TEMP
+}
 
 
 interface ConfigInterface {
