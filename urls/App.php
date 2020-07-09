@@ -39,10 +39,11 @@ class App extends \framework\App implements \urls\AppInterface {
 	protected object $dummyObject;
 	protected $list;
 
-	public function __construct(array $config, object $database) {
+	public function __construct(array $config, Router $router, object $database) {
 		$this->config = $config;
+		$this->router = $router;
 		$this->data = $database;
-		$this->routes = \urls\ROUTES;
+
 		$this->dummyObject = new Dummy($config, $database, $this);
 
 		$this->list = NULL;

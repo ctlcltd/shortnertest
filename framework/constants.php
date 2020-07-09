@@ -16,7 +16,7 @@ const VALUE_BOOL = 5;
 const VALUE_ARR = 6;
 
 
-const CONFIG = [
+/*const CONFIG = [
 	'Host' => [
 		'ssr' => true,
 		'error_404' => '',
@@ -28,9 +28,9 @@ const CONFIG = [
 		'setup' => false,
 		'api_test' => true
 	]
-];
+];*/
 
-const ROUTES = [
+/*const ROUTES = [
 	'/' => [
 		'GET' => [ 'call' => 'exploiting', 'auth' => false ],
 		'POST' => [ 'access' => true ]
@@ -41,4 +41,4 @@ const ROUTES = [
 	'/sample' => [
 		'GET' => [ 'call' => 'sample' ]
 	]
-];
+];*/

@@ -47,7 +47,6 @@ class API implements ApiInterface {
 	public object $dbo;
 	public object $app;
 	public object $ath;
-	public array $routes;
 
 	public function __construct() {
 		set_error_handler([$this, 'error']);
@@ -56,16 +55,17 @@ class API implements ApiInterface {
 		$this->_temp_debug();
 
 
-		$config = new Config(new ConfigSchema);
-		$config->fromArray(\framework\CONFIG);
-		$this->config = $config->get();
+		$settings = new Config(new SettingsSchema);
+		$settings->fromArray(\framework\CONFIG);
+		$this->config = $settings->get();
 
 		$this->dbo = new stdClass;
 
-		$this->app = new $this->App($this->config, $this->dbo);
+		$this->rrh = new $this->Router($this->config, $this);
+		$this->app = new $this->App($this->config, $this->rrh);
 		$this->ath = new $this->Authentication($this->config);
 
-		new $this->Router($this->config, $this);
+		$this->rrh->begin();
 	}
 
 	public function __destruct() {

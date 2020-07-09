@@ -9,7 +9,7 @@
 
 namespace urls;
 
-use \framework\Config_SchemaField_Schema;
+use \framework\Settings_SchemaField_Schema;
 use \framework\creator\CreatorSchemaField;
 
 use \framework\Collection_SchemaField_Schema;
@@ -35,45 +35,43 @@ require_once __DIR__ . '/urls/Virtual.php';
 require_once __DIR__ . '/urls/Shortner.php';
 
 
-const ROUTES = [
-	'/' => [
-		'GET' => [ 'call' => 'exploiting', 'auth' => false ],
-		'POST' => [ 'access' => true ]
-	],
-	'/store' => [
-		'GET' => [ 'call' => 'store_list' ],
-		'POST' => [ 'call' => 'store_add' ],
-		'PATCH' => [ 'call' => 'store_update' ],
-		'DELETE' => [ 'call' => 'store_delete' ],
+final class Router extends \framework\Router {
+	public function __routes() {
+		$this->route('/')
+			->method('GET')->call('exploiting')->auth(false)
+			->method('POST')->access(true);
+
+		$this->route('/setup')
+			->method('GET')->setup(true);
+
+		$this->route('/activate')
+			->method('GET')->call('user_activation')->auth(false);
+
+		$this->route('/store')
+			->method('GET')->call('store_list')
+			->method('POST')->call('store_add')
+			->method('PATCH')->call('store_update')
+			->method('DELETE')->call('store_delete');
+
+		$this->route('/domains')
+			->method('GET')->call('domain_list')
+			->method('POST')->call('domain_add')
+			->method('PATCH')->call('domain_update')
+			->method('DELETE')->call('domain_delete');
+
+		$this->route('/users')
+			->method('GET')->call('user_list')
+			->method('POST')->call('user_add')
+			->method('PATCH')->call('user_update')
+			->method('DELETE')->call('user_delete');
+
 		//-TEMP
-		'PUT' => [ 'call' => 'store_get_by_id' ]
+		$this->route('/store')->method('PUT')->call('store_get_by_id');
+		$this->route('/domains')->method('PUT')->call('domain_get');
+		$this->route('/users')->method('PUT')->call('user_get_by_id');
 		//-TEMP
-	],
-	'/domains' => [
-		'GET' => [ 'call' => 'domain_list' ],
-		'POST' => [ 'call' => 'domain_add' ],
-		'PATCH' => [ 'call' => 'domain_update' ],
-		'DELETE' => [ 'call' => 'domain_delete' ],
-		//-TEMP
-		'PUT' => [ 'call' => 'domain_get' ]
-		//-TEMP
-	],
-	'/users' => [
-		'GET' => [ 'call' => 'user_list' ],
-		'POST' => [ 'call' => 'user_add' ],
-		'PATCH' => [ 'call' => 'user_update' ],
-		'DELETE' => [ 'call' => 'user_delete' ],
-		//-TEMP
-		'PUT' => [ 'call' => 'user_get_by_id' ]
-		//-TEMP
-	],
-	'/setup' => [
-		'GET' => [ 'call' => 'install', 'setup' => true ]
-	],
-	'/activate' => [
-		'GET' => [ 'call' => 'user_activation', 'auth' => false ]
-	]
-];
+	}
+}
 
 
 final class StoreCollection extends \framework\Collection {
@@ -135,13 +133,13 @@ final class DomainsCollection extends \framework\Collection {
 
 	public function __fields() {
 
-		// $this->field('domain_id')
-		// 	->type(\framework\VALUE_STR)
-		// 	->readonly(true);
-
 		$this->field('domain_id')
-			->set('type', \framework\VALUE_STR)
-			->set('readonly', true);
+			->type(\framework\VALUE_STR)
+			->readonly(true);
+
+		// $this->field('domain_id')
+		// 	->set('type', \framework\VALUE_STR)
+		// 	->set('readonly', true);
 
 		$this->field('user_id')
 			->set('type', \framework\VALUE_STR)
@@ -238,6 +236,105 @@ final class UsersCollection extends \framework\Collection {
 			->set('acl', '*');
 	}
 }
+
+
+class SettingsSchema extends \framework\SettingsSchema {
+	public function __items() {
+		parent::__items();
+
+		$this->section('Database')
+			->field('dsn', \framework\VALUE_STR)
+			->field('username', \framework\VALUE_STR)
+			->field('password', \framework\VALUE_STR)
+			->field('options', \framework\VALUE_ARR)
+			->field('shadow', \framework\VALUE_BOOL);
+
+		$this->section('Network')
+			->field('user_acl', \framework\VALUE_STR)
+			->field('user_action_lifetime', \framework\VALUE_INT);
+	}
+
+	/*public function __construct() {
+		parent::__construct();
+
+		$field_shorthand = new \framework\creator\CreatorSchemaField;
+		$field_shorthand->setShorthand($this, $this->field, 'type');
+
+		$this->items->Database = [
+			'dsn' => $field_shorthand->set(\framework\VALUE_STR),
+			'username' => $field_shorthand->set(\framework\VALUE_STR),
+			'password' => $field_shorthand->set(\framework\VALUE_STR),
+			'options' => $field_shorthand->set(\framework\VALUE_ARR),
+			'shadow' => $field_shorthand->set(\framework\VALUE_BOOL)
+		];
+
+		$this->items->Network['user_acl'] = $field_shorthand->set(\framework\VALUE_STR);
+		$this->items->Network['user_action_lifetime'] = $field_shorthand->set(\framework\VALUE_INT);
+	}*/
+}
+
+
+
+// $config = new \framework\Config(new \framework\SettingsSchema);
+// $config->fromIniFile(__DIR__ . '/settings.ini.php');
+// $config = $config->get();
+
+// $database = new VirtualNew($config['Database']);
+
+// $store_collection = new StoreCollection($database);
+// $domains_collection = new DomainsCollection($database);
+// $users_collection = new UsersCollection($database);
+
+// var_dump(serialize($store_collection));
+// var_dump(json_decode(json_encode($store_collection, JSON_PARTIAL_OUTPUT_ON_ERROR), true));
+
+// var_dump(serialize($domains_collection));
+// var_dump(json_decode(json_encode($domains_collection, JSON_PARTIAL_OUTPUT_ON_ERROR), true));
+
+// var_dump(serialize($users_collection));
+// var_dump(json_decode(json_encode($users_collection, JSON_PARTIAL_OUTPUT_ON_ERROR), true));
+
+
+
+/*const ROUTES = [
+	'/' => [
+		'GET' => [ 'call' => 'exploiting', 'auth' => false ],
+		'POST' => [ 'access' => true ]
+	],
+	'/store' => [
+		'GET' => [ 'call' => 'store_list' ],
+		'POST' => [ 'call' => 'store_add' ],
+		'PATCH' => [ 'call' => 'store_update' ],
+		'DELETE' => [ 'call' => 'store_delete' ],
+		//-TEMP
+		'PUT' => [ 'call' => 'store_get_by_id' ]
+		//-TEMP
+	],
+	'/domains' => [
+		'GET' => [ 'call' => 'domain_list' ],
+		'POST' => [ 'call' => 'domain_add' ],
+		'PATCH' => [ 'call' => 'domain_update' ],
+		'DELETE' => [ 'call' => 'domain_delete' ],
+		//-TEMP
+		'PUT' => [ 'call' => 'domain_get' ]
+		//-TEMP
+	],
+	'/users' => [
+		'GET' => [ 'call' => 'user_list' ],
+		'POST' => [ 'call' => 'user_add' ],
+		'PATCH' => [ 'call' => 'user_update' ],
+		'DELETE' => [ 'call' => 'user_delete' ],
+		//-TEMP
+		'PUT' => [ 'call' => 'user_get_by_id' ]
+		//-TEMP
+	],
+	'/setup' => [
+		'GET' => [ 'call' => 'install', 'setup' => true ]
+	],
+	'/activate' => [
+		'GET' => [ 'call' => 'user_activation', 'auth' => false ]
+	]
+];*/
 
 
 /*const COLLECTIONS_TEMPLATE = [
@@ -419,57 +516,3 @@ final class UsersCollection extends \framework\Collection {
 		'user_action_lifetime' => \framework\VALUE_INT
 	]
 ];*/
-
-
-class ConfigSchema extends \framework\ConfigSchema {
-	public function __construct() {
-		parent::__construct();
-
-		$field_shorthand = new \framework\creator\CreatorSchemaField;
-		$field_shorthand->setShorthand($this, $this->field, 'type');
-
-		$this->items->Database = [
-			'dsn' => $field_shorthand->set(\framework\VALUE_STR),
-			'username' => $field_shorthand->set(\framework\VALUE_STR),
-			'password' => $field_shorthand->set(\framework\VALUE_STR),
-			'options' => $field_shorthand->set(\framework\VALUE_ARR),
-			'shadow' => $field_shorthand->set(\framework\VALUE_BOOL)
-		];
-
-		$this->items->Network['user_acl'] = $field_shorthand->set(\framework\VALUE_STR);
-		$this->items->Network['user_action_lifetime'] = $field_shorthand->set(\framework\VALUE_INT);
-	}
-}
-
-
-
-
-
-
-
-
-// $config = new \framework\Config(new \framework\ConfigSchema);
-// $config->fromIniFile(__DIR__ . '/config.ini.php');
-// $config = $config->get();
-
-// $database = new VirtualNew($config['Database']);
-
-// $store_collection = new StoreCollection($database);
-// $domains_collection = new DomainsCollection($database);
-// $users_collection = new UsersCollection($database);
-
-// var_dump(serialize($store_collection));
-// var_dump(json_decode(json_encode($store_collection, JSON_PARTIAL_OUTPUT_ON_ERROR), true));
-
-// var_dump(serialize($domains_collection));
-// var_dump(json_decode(json_encode($domains_collection, JSON_PARTIAL_OUTPUT_ON_ERROR), true));
-
-// var_dump(serialize($users_collection));
-// var_dump(json_decode(json_encode($users_collection, JSON_PARTIAL_OUTPUT_ON_ERROR), true));
-
-
-
-
-
-
-

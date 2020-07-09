@@ -18,56 +18,6 @@ use \framework\Schema;
 use \framework\SchemaField;
 
 
-class ConfigSchema extends Schema {
-	public string $name = 'ConfigSchema';
-	public string $schema = '\framework\Config_SchemaField_Schema';
-	public string $field = '\framework\Config_SchemaField_Field';
-
-	public function __construct() {
-		parent::__construct();
-
-		$this->items->Host = [
-			'ssr' => (new Config_SchemaField_Field)
-				->set('type', \framework\VALUE_BOOL),
-			'error_404' => (new Config_SchemaField_Field)
-				->set('type', \framework\VALUE_STR),
-			'error_50x' => (new Config_SchemaField_Field)
-				->set('type', \framework\VALUE_STR),
-			'backend_path' => (new Config_SchemaField_Field)
-				->set('type', \framework\VALUE_STR)
-		];
-
-		$this->items->Network = [
-			'setup' => (new Config_SchemaField_Field)
-				->set('type', \framework\VALUE_BOOL),
-			'api_test' => (new Config_SchemaField_Field)
-				->set('type', \framework\VALUE_BOOL)
-		];
-
-		// var_dump($this);
-	}
-}
-
-class Config_SchemaField_Schema extends SchemaField {
-}
-
-class Config_SchemaField_Field extends SchemaField {
-	public int $type;
-
-	//-TEMP
-	public function set($key, $value) {
-		$this->{$key} = $value;
-
-		return $this;
-	}
-
-	public function get($key) {
-		return $this->{$key};
-	}
-	//-TEMP
-}
-
-
 interface ConfigInterface {
 	public function fromIniFile(string $file);
 	public function fromIniString(string $ini_contents);
@@ -208,11 +158,14 @@ class Config implements ConfigInterface {
 			if (! \array_key_exists($section, $config))
 				throw new Exception(sprintf('Undefined schema section: %s', $section));
 
-			if (! is_array($values))
-				throw new Exception('Value is not of type array');
+			// if (! is_array($values))
+			// 	throw new Exception('Value is not of type array');
 
-			foreach ($values as $key => $value) {
-				if (! \array_key_exists($key, $this->schema->items->{$section}))
+			foreach ((array) $values as $key => $value) {
+				// if (! \array_key_exists($key, $this->schema->items->{$section}))
+				// 	throw new Exception(sprintf('Undefined schema key: %s', $key));
+
+				if (! property_exists($this->schema->items[$section], $key))
 					throw new Exception(sprintf('Undefined schema key: %s', $key));
 
 				if (gettype($config[$section][$key]) !== $this->type($value->type)) {
@@ -229,7 +182,10 @@ class Config implements ConfigInterface {
 
 	private function validateFixPlain(array $config) {
 		foreach ($this->schema->items as $key => $value) {
-			if (! \array_key_exists($key, $this->schema->items))
+			// if (! \array_key_exists($key, $this->schema->items))
+			// 	throw new Exception(sprintf('Undefined schema key: %s', $key));
+
+			if (! property_exists($this->schema->items, $key))
 				throw new Exception(sprintf('Undefined schema key: %s', $key));
 
 			if (gettype($config[$key]) !== $this->type($value->type)) {
@@ -242,4 +198,142 @@ class Config implements ConfigInterface {
 
 		return $config;
 	}
+}
+
+
+class Settings_SchemaMask_Schema extends SchemaMask {
+	public function field($key, $type) {
+		return $this->deep[1]->field($this, $this->deep[0], $key, $type);
+	}
+}
+
+class Settings_SchemaMask_Field extends SchemaMask {
+	public function field($key, $type) {
+		return $this->deep[1]->field($this->deep[2], $this->deep[0], $key, $type);
+	}
+}
+
+
+class Settings_SchemaField_Schema extends SchemaField {
+}
+
+class Settings_SchemaField_Field extends SchemaField {
+	public int $type;
+
+	//-TEMP
+	/*public function set($key, $value) {
+		$this->{$key} = $value;
+
+		return $this;
+	}*/
+
+	/*public function get($key) {
+		return $this->{$key};
+	}*/
+	//-TEMP
+}
+
+
+class SettingsSection {
+}
+
+class SettingsField {
+}
+
+
+class SettingsSchema extends Schema {
+	public string $name = 'SettingsSchema';
+	public string $schema = '\framework\Settings_SchemaField_Schema';
+	public string $field = '\framework\Settings_SchemaField_Field';
+
+	protected object $_schema;
+	protected object $_field;
+	private bool $blind = false;
+	public $items;
+
+	public function __construct() {
+		$this->_schema = new Settings_SchemaField_Schema;
+		$this->_field = new Settings_SchemaField_Field;
+
+		$this->__items();
+
+		// var_dump($this->items);
+
+		$this->blind = true;
+	}
+
+	public function __set(string $key, $value) {
+		static $mask;
+
+		if ($this->blind)
+			throw new Exception('Cannot override initial set properties.');
+
+		if (! isset($mask))
+			$mask = new Router_SchemaMask(clone $this->_schema, $this);
+
+		$mask->field->{$key} = $this->{$key} = $value;
+	}
+
+	public function __items() {
+		$this->section('Host')
+			->field('ssr', \framework\VALUE_BOOL)
+			->field('error_404', \framework\VALUE_STR)
+			->field('error_50x', \framework\VALUE_STR);
+
+		$this->section('Network')
+			->field('setup', \framework\VALUE_BOOL)
+			->field('api_test', \framework\VALUE_BOOL);
+	}
+
+	public function section(string $skey) {
+		if (isset($this->items[$skey]))
+			$field = $this->items[$skey];
+		else
+			$field = new SettingsSection;
+
+		$mask = new Settings_SchemaMask_Schema(clone $this->_schema, $field, $skey, $this);
+
+		$this->items[$skey] = $mask->field;
+
+		return $mask;
+	}
+
+	public function field(object $mask_field, string $skey, string $key, int $type) {
+		if (isset($this->items[$skey]->{$key}))
+			$field = $this->items[$skey]->{$key};
+		else
+			$field = new SettingsField;
+
+		$mask = new Settings_SchemaMask_Field(clone $this->_field, $field, $skey, $this, $mask_field);
+
+		$mask->set('type', $type);
+
+		$this->items[$skey]->{$key} = $mask->field;
+
+		return $mask;
+	}
+
+	/*public function __construct() {
+		parent::__construct();
+
+		$this->items->Host = [
+			'ssr' => (new Settings_SchemaField_Field)
+				->set('type', \framework\VALUE_BOOL),
+			'error_404' => (new Settings_SchemaField_Field)
+				->set('type', \framework\VALUE_STR),
+			'error_50x' => (new Settings_SchemaField_Field)
+				->set('type', \framework\VALUE_STR),
+			'backend_path' => (new Settings_SchemaField_Field)
+				->set('type', \framework\VALUE_STR)
+		];
+
+		$this->items->Network = [
+			'setup' => (new Settings_SchemaField_Field)
+				->set('type', \framework\VALUE_BOOL),
+			'api_test' => (new Settings_SchemaField_Field)
+				->set('type', \framework\VALUE_BOOL)
+		];
+
+		var_dump($this->items);
+	}*/
 }

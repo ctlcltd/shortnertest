@@ -16,14 +16,15 @@ use \framework\APIException;
 use \framework\Config;
 
 use \urls\ConfigSchema;
-use \urls\Shortner;
+use \urls\Router;
 use \urls\Authentication;
 use \urls\App;
 use \urls\Virtual;
+use \urls\Shortner;
 
 
 class API extends \framework\API implements \framework\APIInterface {
-	private string $Router = '\framework\Router';
+	private string $Router = '\urls\Router';
 	private string $Authentication = '\urls\Authentication';
 	private string $App = '\urls\App';
 	private $shortner;
@@ -34,19 +35,19 @@ class API extends \framework\API implements \framework\APIInterface {
 
 		$this->_temp_debug();
 
-		$config = new Config(new ConfigSchema);
-		$config->fromIniFile(__DIR__ . '/../config.ini.php');
-		$this->config = $config->get();
+		$settings = new Config(new SettingsSchema);
+		$settings->fromIniFile(__DIR__ . '/../settings.ini.php');
+		$this->config = $settings->get();
 
 		$this->dbo = new Virtual($this->config);
 
-		$this->app = new $this->App($this->config, $this->dbo);
-		$this->ath = new $this->Authentication($this->config, $this->dbo, $this->app);
-
-		$this->routes = \urls\ROUTES;
 		$this->shortner = new Shortner;
 
-		new $this->Router($this->config, $this);
+		$this->rrh = new $this->Router($this->config, $this);
+		$this->app = new $this->App($this->config, $this->rrh, $this->dbo);
+		$this->ath = new $this->Authentication($this->config, $this->dbo, $this->app);
+
+		$this->rrh->begin();
 	}
 
 	public function __destruct() {

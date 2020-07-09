@@ -23,9 +23,9 @@ class App implements AppInterface {
 	public array $config;
 	public array $routes;
 
-	public function __construct(array $config) {
+	public function __construct(array $config, Router $router) {
 		$this->config = $config;
-		$this->routes = \framework\ROUTES;
+		$this->router = $router;
 	}
 
 	public function install() {
@@ -39,7 +39,7 @@ class App implements AppInterface {
 		if (! $this->config['Network']['api_test'])
 			throw new AppException('Bad request');
 
-		return $this->routes;
+		return $this->router->routes;
 	}
 
 	public function sample() {

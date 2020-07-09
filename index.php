@@ -10,7 +10,7 @@
 empty($_SERVER['REQUEST_URI']) && exit(1);
 
 try {
-	$config = parse_ini_file(__DIR__ . '/config.ini.php', true);
+	$config = parse_ini_file(__DIR__ . '/settings.ini.php', true);
 } catch (Exception $error) {
 	E_NOTICE && die('Missing or wrong configuration file.');
 

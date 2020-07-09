@@ -37,16 +37,19 @@ class Collection_SchemaField_Field extends SchemaField {
 	public string $transform;
 }
 
+
 class Collection_SchemaMask_Schema extends SchemaMask {
 }
 
 class Collection_SchemaMask_Field extends SchemaMask {
-	public function label($value, $field, $name) {
+	public function label($value) {
+		if (! empty($value)) return $value;
+
 		$_replace_transfunc = function($matches) {
 			return strtoupper($matches[0]);
 		};
 
-		$label = str_replace('_', ' ', $name);
+		$label = str_replace('_', ' ', $this->deep[0]);
 
 		// if (stripos($label, 'id') === false)
 		// 	$label = substr($label, (stripos($label, $name) + strlen($name) + 1));
@@ -57,22 +60,20 @@ class Collection_SchemaMask_Field extends SchemaMask {
 	}
 }
 
-class CollectionSchema {
-	public string $schema = '\urls\Collection_SchemaField_Schema';
-	public string $field = '\urls\Collection_SchemaField_Field';
 
-	public function __construct() {
-		$this->items = new $this->schema;
-	}
+class CollectionSchema {
+	public string $schema = '\framework\Collection_SchemaField_Schema';
+	public string $field = '\framework\Collection_SchemaField_Field';
 }
 
 class CollectionField {
 }
 
+
 interface CollectionInterface {
-	public function __set($key, $value);
+	public function __set(string $key, $value);
 	public function __fields();
-	public function field($name);
+	public function field(string $name);
 	public function fetch($keys, bool $single, bool $distinct);
 	public function add();
 	public function update();
@@ -93,7 +94,6 @@ class Collection implements CollectionInterface {
 	public function __construct(object $database) {
 		$this->_schema = new Collection_SchemaField_Schema;
 		$this->_field = new Collection_SchemaField_Field;
-		$this->_mask = new Collection_SchemaMask_Schema($this->label, $this->_schema, $this);
 		$this->data = $database;
 
 		$this->__fields();
@@ -103,25 +103,28 @@ class Collection implements CollectionInterface {
 		$this->blind();
 	}
 
-	public function __set($key, $value) {
+	public function __set(string $key, $value) {
+		static $mask;
+
 		if ($this->blind)
 			throw new Exception('Cannot override initial set properties.');
 
-		$this->_mask->field->{$key} = $this->{$key} = $value;
+		if (! isset($mask))
+			$mask = new Collection_SchemaMask_Schema(clone $this->_schema, $this);
+
+		$mask->field->{$key} = $this->{$key} = $value;
 	}
 
 	public function __fields() {
 	}
 
-	public function field($name) {
-		static $mask;
-
-		if (isset($this->fields[$name])) {
+	public function field(string $name) {
+		if (isset($this->fields[$name]))
 			$field = $this->fields[$name];
-		} else {
+		else
 			$field = new CollectionField;
-			$mask = new Collection_SchemaMask_Field($name, $this->_field, $field);
-		}
+
+		$mask = new Collection_SchemaMask_Field(clone $this->_field, $field, $name);
 
 		//autofill
 		$mask->label;

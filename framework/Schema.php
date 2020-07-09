@@ -18,7 +18,7 @@ abstract class Schema {
 	public string $name;
 	protected string $schema;
 	protected string $field;
-	public object $items;
+	public $items;
 
 	public function __construct() {
 		$this->items = new $this->schema;
@@ -27,6 +27,7 @@ abstract class Schema {
 
 abstract class SchemaField {
 }
+
 
 interface SchemaMaskInterface {
 	public function __call(string $key, array $arguments);
@@ -38,14 +39,14 @@ interface SchemaMaskInterface {
 
 abstract class SchemaMask implements SchemaMaskInterface {
 	public bool $interrupt = false;
-	public string $name;
 	public object $schema;
 	public object $field;
+	public array $deep;
 
-	public function __construct(string $name, object $schema, object $field) {
-		$this->name = $name;
+	public function __construct(object $schema, object $field, ... $deep_mask) {
 		$this->schema = $schema;
 		$this->field = $field;
+		$this->deep = $deep_mask;
 		$this->interrupt = true;
 	}
 
@@ -68,11 +69,13 @@ abstract class SchemaMask implements SchemaMaskInterface {
 	}
 
 	public function __get(string $key) {
+		$value = isset($this->field->{$key}) ? $this->field->{$key} : NULL;
+
 		if (method_exists($this, $key)) {
-			$this->schema->{$key} = $this->field->{$key} = $this->{$key}('', $this->field, $this->name);
+			$this->schema->{$key} = $this->field->{$key} = $this->{$key}($value);
 		}
 
-		return isset($this->field->{$key}) ? $this->field->{$key} : NULL;
+		return $value;
 	}
 
 	public function set($key, $value) {
@@ -88,17 +91,9 @@ abstract class SchemaMask implements SchemaMaskInterface {
 
 
 
-namespace framework\creator;
-
-class CreatorSchema {
-	public function fromArray(object $schema, array $template, string $name) {
-	}
-}
+/*namespace framework\creator;
 
 class CreatorSchemaField {
-	public function fromArray(object $schema_field, string $name, $field) {
-	}
-
 	public function recurse(&$value, string $key, object $schema) {
 		$value = $this->{$key} = method_exists($this, $key) ? $this->{$key}($value, $schema) : $value;
 	}
@@ -114,4 +109,4 @@ class CreatorSchemaField {
 		// else 
 		return (new $this->field)->set($this->key, $args[0], $this->schema);
 	}
-}
+}*/

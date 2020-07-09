@@ -24,27 +24,42 @@ class Router_SchemaField_RouteField extends SchemaField {
 }
 
 class Router_SchemaField_Route extends SchemaField {
-	public string $method;
-	public object $route;
+	// public string $method;
 }
 
 class Router_SchemaField_Schema extends SchemaField {
 	public array $routes;
 }
 
+
 class Router_SchemaMask extends SchemaMask {
+}
+
+class Router_SchemaMask_Route extends SchemaMask {
+	public function method($method) {
+		return $this->deep[1]->field($this, $this->deep[0], $method);
+	}
+}
+
+class Router_SchemaMask_Field extends SchemaMask {
+	public function method($method) {
+		return $this->deep[1]->field($this->deep[2], $this->deep[0], $method);
+	}
+}
+
+
+class RouterRoute {
 }
 
 class RouterField {
 }
 
-class RouterRoute {
-}
-
 
 interface RouterInterface {
-	public function __set($key, $value);
+	public function __set(string $key, $value);
 	public function __routes();
+	public function route(string $path);
+	public function field(object $mask_field, string $path, string $method);
 	public function begin();
 	public function routing(string $method, string $endpoint);
 	public function getPathInfo($path_info);
@@ -66,7 +81,6 @@ class Router implements RouterInterface {
 	protected object $_schema;
 	protected object $_route;
 	protected object $_field;
-	protected object $_mask;
 	private bool $blind = false;
 	public array $routes;
 
@@ -74,28 +88,28 @@ class Router implements RouterInterface {
 		$this->_schema = new Router_SchemaField_Schema;
 		$this->_route = new Router_SchemaField_Route;
 		$this->_field = new Router_SchemaField_RouteField;
-		$this->_mask = new Router_SchemaMask(__CLASS__, $this->_schema, $this);
+		
 		$this->config = $config;
 		$this->lawyer = $lawyer;
 
 		//same origin
 
-		$this->routes = \urls\ROUTES;
-		// $this->routes = [];
-
-		// $this->__routes();
-		// var_dump($this->routes);
-
-		$this->begin();
+		$this->__routes();
+		// var_dump($this);
 
 		$this->blind = true;
 	}
 
-	public function __set($key, $value) {
+	public function __set(string $key, $value) {
+		static $mask;
+
 		if ($this->blind)
 			throw new Exception('Cannot override initial set properties.');
 
-		$this->_mask->field->{$key} = $this->{$key} = $value;
+		if (! isset($mask))
+			$mask = new Router_SchemaMask(clone $this->_schema, $this);
+
+		$mask->field->{$key} = $this->{$key} = $value;
 	}
 
 	public function __routes() {
@@ -110,16 +124,28 @@ class Router implements RouterInterface {
 			->method('GET')->call('sample');
 	}
 
-	public function route($path) {
-		static $mask;
-
-		if (isset($this->routes[$path])) {
-		} else {
+	public function route(string $path) {
+		if (isset($this->routes[$path]))
+			$route = $this->routes[$path];
+		else
 			$route = new RouterRoute;
-			$mask = new Router_SchemaMask($path, $this->_route, $route);
 
-			$this->routes[$path] = [];
-		}
+		$mask = new Router_SchemaMask_Route(clone $this->_route, $route, $path, $this);
+
+		$this->routes[$path] = $mask->field;
+
+		return $mask;
+	}
+
+	public function field(object $mask_field, string $path, string $method) {
+		if (isset($this->routes[$path]->{$method}))
+			$field = $this->routes[$path]->{$method};
+		else
+			$field = new RouterField;
+
+		$mask = new Router_SchemaMask_Field(clone $this->_field, $field, $path, $this, $mask_field);
+
+		$this->routes[$path]->{$method} = $mask->field;
 
 		return $mask;
 	}
@@ -133,28 +159,26 @@ class Router implements RouterInterface {
 	}
 
 	public function routing(string $method, string $endpoint) {
-		if (! isset($this->routes[$endpoint]) || ! isset($this->routes[$endpoint][$method]))
+		if (! isset($this->routes[$endpoint]) || ! isset($this->routes[$endpoint]->{$method}))
 			return $this->forwardResponseHeader(self::HTTP_HEADER_UNREACHABLE);
 
 		$need_auth = true;
 
-		if (isset($this->routes[$endpoint][$method]['auth']))
-			$need_auth = $this->routes[$endpoint][$method]['auth'];
+		if (isset($this->routes[$endpoint]->{$method}->{'auth'}))
+			$need_auth = $this->routes[$endpoint]->{$method}->{'auth'};
 
-		if (isset($this->routes[$endpoint][$method]['access'])) {
+		if (isset($this->routes[$endpoint]->{$method}->{'access'})) {
 			return $this->needAuthentication(false);
-		} else if (isset($this->routes[$endpoint][$method]['setup'])) {
+		} else if (isset($this->routes[$endpoint]->{$method}->{'setup'})) {
 			if ($this->config['Network']['setup']) return $this->requestSetup($method, $endpoint);
 			else return $this->forwardResponseHeader(self::HTTP_HEADER_NOT_FOUND);
-		} else if (isset($this->routes[$endpoint][$method]['call'])) {
+		} else if (isset($this->routes[$endpoint]->{$method}->{'call'})) {
 			if (! $need_auth) $this->forwardResponseHeader(self::HTTP_HEADER_ALLOW);
 			else if ($this->needAuthentication(true)) $this->forwardResponseHeader(self::HTTP_HEADER_ALLOW);
 			else return $this->forwardResponseHeader(self::HTTP_HEADER_DENY);
 		} else {
 			return $this->forwardResponseHeader(self::HTTP_HEADER_UNREACHABLE);
 		}
-
-		$call = $this->routes[$endpoint][$method]['call'];
 
 		if ($method === 'GET') {
 			$body = $_GET;
@@ -167,7 +191,7 @@ class Router implements RouterInterface {
 			$body = $_POST;
 		}
 
-		if ($call)
+		if ($call = $this->routes[$endpoint]->{$method}->{'call'})
 			return $this->forwardRequest($call, $body);
 
 		return $this->forwardResponseHeader(self::HTTP_HEADER_NOT_FOUND);
