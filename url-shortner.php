@@ -10,7 +10,6 @@
 namespace urls;
 
 use \framework\Settings_SchemaField_Schema;
-use \framework\creator\CreatorSchemaField;
 
 use \framework\Collection_SchemaField_Schema;
 use \framework\Collection_SchemaField_Field;
@@ -26,6 +25,7 @@ require_once __DIR__ . '/framework/Collection.php';
 require_once __DIR__ . '/framework/App.php';
 require_once __DIR__ . '/framework/Logger.php';
 require_once __DIR__ . '/framework/API.php';
+require_once __DIR__ . '/framework/Layout.php';
 
 require_once __DIR__ . '/urls/App.php';
 require_once __DIR__ . '/urls/Authentication.php';
@@ -253,24 +253,6 @@ class SettingsSchema extends \framework\SettingsSchema {
 			->field('user_acl', \framework\VALUE_STR)
 			->field('user_action_lifetime', \framework\VALUE_INT);
 	}
-
-	/*public function __construct() {
-		parent::__construct();
-
-		$field_shorthand = new \framework\creator\CreatorSchemaField;
-		$field_shorthand->setShorthand($this, $this->field, 'type');
-
-		$this->items->Database = [
-			'dsn' => $field_shorthand->set(\framework\VALUE_STR),
-			'username' => $field_shorthand->set(\framework\VALUE_STR),
-			'password' => $field_shorthand->set(\framework\VALUE_STR),
-			'options' => $field_shorthand->set(\framework\VALUE_ARR),
-			'shadow' => $field_shorthand->set(\framework\VALUE_BOOL)
-		];
-
-		$this->items->Network['user_acl'] = $field_shorthand->set(\framework\VALUE_STR);
-		$this->items->Network['user_action_lifetime'] = $field_shorthand->set(\framework\VALUE_INT);
-	}*/
 }
 
 

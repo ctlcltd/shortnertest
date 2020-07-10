@@ -11,7 +11,11 @@ namespace urls;
 
 require_once __DIR__ . '/../url-shortner.php';
 
+use \framework\Config;
+
+use \urls\SettingsSchema;
 use \urls\API;
+
 
 ini_set('expose_php', 0);
 ini_set('enable_postdata_reading', 1);
@@ -23,4 +27,11 @@ ini_set('variables_order', 'GPS');
 ini_set('http.request.datashare.cookie', 0);
 ini_set('cgi.fix_pathinfo', 1);
 
-new \urls\API;
+
+
+
+$settings = new Config(new SettingsSchema);
+$settings->fromIniFile(__DIR__ . '/../settings.ini.php');
+$config = $settings->get();
+
+new \urls\API($config);

@@ -46,22 +46,3 @@ class Virtual extends DatabaseSQL {
 		parent::remove($collection);
 	}
 }
-
-class VirtualNew extends DatabaseSQL {
-	public function fetch(string $collection, $keys = NULL, bool $single = false, bool $distinct = false) {
-		parent::fetch($collection, $keys, $single, $distinct);
-	}
-
-	public function add(string $collection) {
-		parent::add($collection);
-	}
-
-	public function update(string $collection) {
-		parent::update($collection);
-		
-	}
-
-	public function remove(string $collection) {
-		parent::remove($collection);
-	}
-}

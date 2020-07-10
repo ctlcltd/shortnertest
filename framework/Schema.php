@@ -38,10 +38,10 @@ interface SchemaMaskInterface {
 }
 
 abstract class SchemaMask implements SchemaMaskInterface {
-	public bool $interrupt = false;
 	public object $schema;
 	public object $field;
 	public array $deep;
+	public bool $interrupt = false;
 
 	public function __construct(object $schema, object $field, ... $deep_mask) {
 		$this->schema = $schema;
@@ -91,22 +91,6 @@ abstract class SchemaMask implements SchemaMaskInterface {
 
 
 
-/*namespace framework\creator;
-
-class CreatorSchemaField {
-	public function recurse(&$value, string $key, object $schema) {
-		$value = $this->{$key} = method_exists($this, $key) ? $this->{$key}($value, $schema) : $value;
-	}
-
-	public function setShorthand(object $schema, string $field, $fixed_key = NULL) {
-		$this->field = $field;
-		$this->schema = $schema;
-		$this->key = $fixed_key;
-	}
-
-	public function set(...$args) {
-		// if (count($args) > 1) return (new $this->field)->set((string) $args[0], $args[1], $this->schema);
-		// else 
-		return (new $this->field)->set($this->key, $args[0], $this->schema);
-	}
-}*/
+// public function recurse(&$value, string $key, object $schema) {
+// 	$value = $this->{$key} = method_exists($this, $key) ? $this->{$key}($value, $schema) : $value;
+// }

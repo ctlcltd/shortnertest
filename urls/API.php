@@ -29,15 +29,14 @@ class API extends \framework\API implements \framework\APIInterface {
 	private string $App = '\urls\App';
 	private $shortner;
 
-	public function __construct() {
+	public function __construct(array $config, bool $autorun = true) {
 		set_error_handler([$this, 'error']);
 		set_exception_handler([$this, 'exception']);
 
 		$this->_temp_debug();
 
-		$settings = new Config(new SettingsSchema);
-		$settings->fromIniFile(__DIR__ . '/../settings.ini.php');
-		$this->config = $settings->get();
+
+		$this->config = $config;
 
 		$this->dbo = new Virtual($this->config);
 
@@ -47,7 +46,9 @@ class API extends \framework\API implements \framework\APIInterface {
 		$this->app = new $this->App($this->config, $this->rrh, $this->dbo);
 		$this->ath = new $this->Authentication($this->config, $this->dbo, $this->app);
 
-		$this->rrh->begin();
+		$this->autorun = $autorun;
+
+		if ($autorun) $this->run();
 	}
 
 	public function __destruct() {

@@ -219,18 +219,6 @@ class Settings_SchemaField_Schema extends SchemaField {
 
 class Settings_SchemaField_Field extends SchemaField {
 	public int $type;
-
-	//-TEMP
-	/*public function set($key, $value) {
-		$this->{$key} = $value;
-
-		return $this;
-	}*/
-
-	/*public function get($key) {
-		return $this->{$key};
-	}*/
-	//-TEMP
 }
 
 
@@ -269,7 +257,7 @@ class SettingsSchema extends Schema {
 			throw new Exception('Cannot override initial set properties.');
 
 		if (! isset($mask))
-			$mask = new Router_SchemaMask(clone $this->_schema, $this);
+			$mask = new Settings_SchemaMask_Schema(clone $this->_schema, $this);
 
 		$mask->field->{$key} = $this->{$key} = $value;
 	}
@@ -312,28 +300,4 @@ class SettingsSchema extends Schema {
 
 		return $mask;
 	}
-
-	/*public function __construct() {
-		parent::__construct();
-
-		$this->items->Host = [
-			'ssr' => (new Settings_SchemaField_Field)
-				->set('type', \framework\VALUE_BOOL),
-			'error_404' => (new Settings_SchemaField_Field)
-				->set('type', \framework\VALUE_STR),
-			'error_50x' => (new Settings_SchemaField_Field)
-				->set('type', \framework\VALUE_STR),
-			'backend_path' => (new Settings_SchemaField_Field)
-				->set('type', \framework\VALUE_STR)
-		];
-
-		$this->items->Network = [
-			'setup' => (new Settings_SchemaField_Field)
-				->set('type', \framework\VALUE_BOOL),
-			'api_test' => (new Settings_SchemaField_Field)
-				->set('type', \framework\VALUE_BOOL)
-		];
-
-		var_dump($this->items);
-	}*/
 }

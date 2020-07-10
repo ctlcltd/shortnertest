@@ -1,9 +1,24 @@
 <?php
-//SSR
+/**
+ * backend/index.php
+ * 
+ * @author Leonardo Laureti <https://loltgt.ga>
+ * @version staging
+ * @license MIT License
+ */
 
-libxml_use_internal_errors(true);
+namespace urls;
 
-$tpl = new \DOMDocument;
-$tpl->loadHTMLFile(__DIR__ . '/index.html');
+require_once __DIR__ . '/../url-shortner.php';
 
-echo $tpl->saveHTML();
+use \framework\Config;
+
+use \urls\SettingsSchema;
+use \urls\Layout;
+
+
+$settings = new Config(new SettingsSchema);
+$settings->fromIniFile(__DIR__ . '/../settings.ini.php');
+$config = $settings->get();
+
+new \framework\BackendLayout($config);

@@ -74,10 +74,6 @@ interface CollectionInterface {
 	public function __set(string $key, $value);
 	public function __fields();
 	public function field(string $name);
-	public function fetch($keys, bool $single, bool $distinct);
-	public function add();
-	public function update();
-	public function remove();
 }
 
 class Collection implements CollectionInterface {
@@ -97,8 +93,6 @@ class Collection implements CollectionInterface {
 		$this->data = $database;
 
 		$this->__fields();
-
-		$this->label;
 
 		$this->blind();
 	}
@@ -132,22 +126,6 @@ class Collection implements CollectionInterface {
 		$this->fields[$name] = $mask->field;
 
 		return $mask;
-	}
-
-	public function fetch($keys = NULL, bool $single = false, bool $distinct = false) {
-		$this->data->fetch($this->source, $keys, $single, $distinct);
-	}
-
-	public function add() {
-		$this->data->add($this->source);
-	}
-
-	public function update() {
-		$this->data->update($this->source);
-	}
-
-	public function remove() {
-		$this->data->remove($this->source);
 	}
 
 	private function blind() {

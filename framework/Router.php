@@ -32,6 +32,14 @@ class Router_SchemaField_Schema extends SchemaField {
 }
 
 
+class RouterSchema extends Schema {
+	public function __construct() {
+		$this->_route = new Router_SchemaField_Route;
+		$this->_field = new Router_SchemaField_RouteField;
+	}
+}
+
+
 class Router_SchemaMask extends SchemaMask {
 }
 
@@ -113,6 +121,9 @@ class Router implements RouterInterface {
 	}
 
 	public function __routes() {
+		//context
+		//map
+
 		$this->route('/')
 			->method('GET')->call('exploiting')->auth(false)
 			->method('POST')->access(true);
